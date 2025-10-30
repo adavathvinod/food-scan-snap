@@ -14,12 +14,97 @@ export type Database = {
   }
   public: {
     Tables: {
+      chat_history: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          role: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      meal_schedules: {
+        Row: {
+          created_at: string
+          id: string
+          meal_instructions: string | null
+          meal_name: string
+          meal_time: string
+          reminder_enabled: boolean | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          meal_instructions?: string | null
+          meal_name: string
+          meal_time: string
+          reminder_enabled?: boolean | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          meal_instructions?: string | null
+          meal_name?: string
+          meal_time?: string
+          reminder_enabled?: boolean | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      medical_reports: {
+        Row: {
+          extracted_data: Json
+          id: string
+          image_url: string | null
+          recommendations: string | null
+          report_type: string
+          uploaded_at: string
+          user_id: string
+        }
+        Insert: {
+          extracted_data: Json
+          id?: string
+          image_url?: string | null
+          recommendations?: string | null
+          report_type: string
+          uploaded_at?: string
+          user_id: string
+        }
+        Update: {
+          extracted_data?: Json
+          id?: string
+          image_url?: string | null
+          recommendations?: string | null
+          report_type?: string
+          uploaded_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
           email: string
           full_name: string | null
           id: string
+          preferred_language: string | null
           updated_at: string
         }
         Insert: {
@@ -27,6 +112,7 @@ export type Database = {
           email: string
           full_name?: string | null
           id: string
+          preferred_language?: string | null
           updated_at?: string
         }
         Update: {
@@ -34,6 +120,7 @@ export type Database = {
           email?: string
           full_name?: string | null
           id?: string
+          preferred_language?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -42,12 +129,15 @@ export type Database = {
         Row: {
           calories: number
           carbs: number
+          category_icon: string | null
           created_at: string
           fat: number
+          fiber: number | null
           food_name: string
           health_tip: string | null
           id: string
           image_url: string | null
+          items: Json | null
           protein: number
           scanned_at: string
           user_id: string
@@ -55,12 +145,15 @@ export type Database = {
         Insert: {
           calories?: number
           carbs?: number
+          category_icon?: string | null
           created_at?: string
           fat?: number
+          fiber?: number | null
           food_name: string
           health_tip?: string | null
           id?: string
           image_url?: string | null
+          items?: Json | null
           protein?: number
           scanned_at?: string
           user_id: string
@@ -68,12 +161,15 @@ export type Database = {
         Update: {
           calories?: number
           carbs?: number
+          category_icon?: string | null
           created_at?: string
           fat?: number
+          fiber?: number | null
           food_name?: string
           health_tip?: string | null
           id?: string
           image_url?: string | null
+          items?: Json | null
           protein?: number
           scanned_at?: string
           user_id?: string
@@ -128,6 +224,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      weight_entries: {
+        Row: {
+          height: number | null
+          id: string
+          recorded_at: string
+          user_id: string
+          weight: number
+        }
+        Insert: {
+          height?: number | null
+          id?: string
+          recorded_at?: string
+          user_id: string
+          weight: number
+        }
+        Update: {
+          height?: number | null
+          id?: string
+          recorded_at?: string
+          user_id?: string
+          weight?: number
+        }
+        Relationships: []
       }
     }
     Views: {

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import ImageUpload from "@/components/ImageUpload";
 import CameraCapture from "@/components/CameraCapture";
-import NutritionCard from "@/components/NutritionCard";
+import MultiItemNutritionCard from "@/components/MultiItemNutritionCard";
 import Layout from "@/components/Layout";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -14,7 +14,11 @@ interface NutritionData {
   protein: number;
   fat: number;
   carbs: number;
+  fiber: number;
   healthTip: string;
+  quickAdvice: string;
+  items: any[];
+  isMultiItem: boolean;
 }
 
 const Index = () => {
@@ -103,7 +107,11 @@ const Index = () => {
           protein: data.protein,
           fat: data.fat,
           carbs: data.carbs,
+          fiber: data.fiber || 0,
           healthTip: data.healthTip,
+          quickAdvice: data.quickAdvice || "",
+          items: data.items || [],
+          isMultiItem: data.isMultiItem || false,
         });
 
         toast.success("Food analyzed and saved!");
@@ -171,7 +179,7 @@ const Index = () => {
             )}
           </div>
         ) : (
-          <NutritionCard data={nutritionData} onScanAnother={resetScan} />
+          <MultiItemNutritionCard data={nutritionData} onScanAnother={resetScan} />
         )}
       </div>
     </Layout>

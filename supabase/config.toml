@@ -2,3 +2,18 @@ project_id = "byzyxnsbqmrtwfnhabjw"
 
 [functions.analyze-food]
 verify_jwt = false
+
+[functions.analyze-medical-report]
+verify_jwt = false
+
+[functions.health-chat]
+verify_jwt = false
+
+[functions.translate-text]
+verify_jwt = false
+
+[functions.condition-advice]
+verify_jwt = false
+
+[functions.parse-meal-schedule]
+verify_jwt = false

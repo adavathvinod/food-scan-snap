@@ -8,6 +8,10 @@ import Auth from "./pages/Auth";
 import History from "./pages/History";
 import Goals from "./pages/Goals";
 import Profile from "./pages/Profile";
+import MedicalReports from "./pages/MedicalReports";
+import AIChat from "./pages/AIChat";
+import ConditionAdvice from "./pages/ConditionAdvice";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,7 +28,10 @@ const App = () => (
           <Route path="/history" element={<History />} />
           <Route path="/goals" element={<Goals />} />
           <Route path="/profile" element={<Profile />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          <Route path="/reports" element={<MedicalReports />} />
+          <Route path="/chat" element={<AIChat />} />
+          <Route path="/advice" element={<ConditionAdvice />} />
+          <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
