@@ -22,7 +22,10 @@ const commonConditions = [
 ];
 
 interface Advice {
-  foodSuggestions: string[];
+  foodSuggestions: {
+    vegetarian: string[];
+    nonVegetarian: string[];
+  };
   habits: string[];
   rationale: string;
   disclaimer: string;
@@ -159,15 +162,29 @@ const ConditionAdvice = () => {
               <CardHeader>
                 <CardTitle>Food Suggestions</CardTitle>
               </CardHeader>
-              <CardContent>
-                <ul className="space-y-2">
-                  {advice.foodSuggestions.map((food, index) => (
-                    <li key={index} className="flex items-start gap-2 text-sm text-foreground">
-                      <span className="text-primary mt-1">•</span>
-                      <span>{food}</span>
-                    </li>
-                  ))}
-                </ul>
+              <CardContent className="space-y-4">
+                <div>
+                  <h3 className="font-semibold text-sm mb-2 text-foreground">🥬 Vegetarian Options</h3>
+                  <ul className="space-y-2">
+                    {advice.foodSuggestions.vegetarian?.map((food, index) => (
+                      <li key={index} className="flex items-start gap-2 text-sm text-foreground">
+                        <span className="text-primary mt-1">•</span>
+                        <span>{food}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-sm mb-2 text-foreground">🍗 Non-Vegetarian Options</h3>
+                  <ul className="space-y-2">
+                    {advice.foodSuggestions.nonVegetarian?.map((food, index) => (
+                      <li key={index} className="flex items-start gap-2 text-sm text-foreground">
+                        <span className="text-primary mt-1">•</span>
+                        <span>{food}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </CardContent>
             </Card>
 
