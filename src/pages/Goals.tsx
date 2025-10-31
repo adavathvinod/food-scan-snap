@@ -5,11 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { Loader2 } from "lucide-react";
+import { Loader2, Scale } from "lucide-react";
 import Layout from "@/components/Layout";
 import { toast } from "sonner";
-import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear } from "date-fns";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
+import { startOfWeek, format } from "date-fns";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from "recharts";
 
 interface UserGoals {
   daily_calorie_goal: number;
@@ -36,6 +36,9 @@ const Goals = () => {
   });
   const [todayTotals, setTodayTotals] = useState<DailyTotals>({ calories: 0, protein: 0, fat: 0, carbs: 0 });
   const [weeklyData, setWeeklyData] = useState<any[]>([]);
+  const [weightData, setWeightData] = useState<any[]>([]);
+  const [newWeight, setNewWeight] = useState("");
+  const [newHeight, setNewHeight] = useState("");
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
 
@@ -105,10 +108,53 @@ const Goals = () => {
         }));
         setWeeklyData(chartData);
       }
+
+      // Load weight history
+      const { data: weightEntries } = await supabase
+        .from("weight_entries")
+        .select("weight, height, recorded_at")
+        .order("recorded_at", { ascending: true })
+        .limit(30);
+
+      if (weightEntries) {
+        const formattedWeightData = weightEntries.map(entry => ({
+          date: format(new Date(entry.recorded_at), 'MMM dd'),
+          weight: entry.weight,
+          height: entry.height,
+        }));
+        setWeightData(formattedWeightData);
+      }
     } catch (error: any) {
       toast.error("Failed to load goals and progress");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const addWeightEntry = async () => {
+    if (!newWeight) {
+      toast.error("Please enter your weight");
+      return;
+    }
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { error } = await supabase.from("weight_entries").insert({
+        user_id: user.id,
+        weight: parseFloat(newWeight),
+        height: newHeight ? parseFloat(newHeight) : null,
+      });
+
+      if (error) throw error;
+
+      toast.success("Weight entry added!");
+      setNewWeight("");
+      setNewHeight("");
+      loadGoalsAndProgress();
+    } catch (error: any) {
+      toast.error("Failed to add weight entry");
     }
   };
 
@@ -248,6 +294,56 @@ const Goals = () => {
             </CardContent>
           </Card>
         )}
+
+        {/* Weight Tracking */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Scale className="w-5 h-5 text-primary" />
+              Weight Tracking
+            </CardTitle>
+            <CardDescription>Monitor your weight progress over time</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <Label>Weight (kg)</Label>
+                <Input
+                  type="number"
+                  step="0.1"
+                  placeholder="70.5"
+                  value={newWeight}
+                  onChange={(e) => setNewWeight(e.target.value)}
+                />
+              </div>
+              <div className="flex-1">
+                <Label>Height (cm) - Optional</Label>
+                <Input
+                  type="number"
+                  step="0.1"
+                  placeholder="175"
+                  value={newHeight}
+                  onChange={(e) => setNewHeight(e.target.value)}
+                />
+              </div>
+            </div>
+            <Button onClick={addWeightEntry} className="w-full">Add Entry</Button>
+            
+            {weightData.length > 0 && (
+              <div className="mt-4">
+                <ResponsiveContainer width="100%" height={200}>
+                  <LineChart data={weightData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip />
+                    <Line type="monotone" dataKey="weight" stroke="hsl(var(--primary))" strokeWidth={2} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Goal Settings */}
         <Card>

@@ -80,13 +80,33 @@ const Settings = () => {
   };
 
   const toggleReminders = async (enabled: boolean) => {
-    setRemindersEnabled(enabled);
-    
-    if (enabled) {
-      // OneSignal integration would be initialized here
-      toast.success("Meal reminders enabled");
-    } else {
-      toast.success("Meal reminders disabled");
+    try {
+      const { initializeOneSignal, requestNotificationPermission, scheduleMealReminders } = await import("@/lib/onesignal");
+      
+      setRemindersEnabled(enabled);
+      
+      if (enabled) {
+        // Request notification permission
+        const permission = await requestNotificationPermission();
+        if (!permission) {
+          toast.error("Notification permission denied");
+          setRemindersEnabled(false);
+          return;
+        }
+        
+        // Initialize OneSignal
+        await initializeOneSignal();
+        
+        // Schedule meal reminders
+        await scheduleMealReminders();
+        
+        toast.success("Meal reminders enabled");
+      } else {
+        toast.success("Meal reminders disabled");
+      }
+    } catch (error) {
+      console.error("Failed to toggle reminders:", error);
+      toast.error("Failed to update reminder settings");
     }
   };
 
