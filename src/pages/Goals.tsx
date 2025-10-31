@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, memo, lazy, Suspense } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +10,20 @@ import { Loader2, Scale } from "lucide-react";
 import Layout from "@/components/Layout";
 import { toast } from "sonner";
 import { startOfWeek, format } from "date-fns";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from "recharts";
+
+// Lazy load heavy chart components
+const BarChart = lazy(() => import("recharts").then(m => ({ default: m.BarChart })));
+const Bar = lazy(() => import("recharts").then(m => ({ default: m.Bar })));
+const XAxis = lazy(() => import("recharts").then(m => ({ default: m.XAxis })));
+const YAxis = lazy(() => import("recharts").then(m => ({ default: m.YAxis })));
+const CartesianGrid = lazy(() => import("recharts").then(m => ({ default: m.CartesianGrid })));
+const Tooltip = lazy(() => import("recharts").then(m => ({ default: m.Tooltip })));
+const ResponsiveContainer = lazy(() => import("recharts").then(m => ({ default: m.ResponsiveContainer })));
+const PieChart = lazy(() => import("recharts").then(m => ({ default: m.PieChart })));
+const Pie = lazy(() => import("recharts").then(m => ({ default: m.Pie })));
+const Cell = lazy(() => import("recharts").then(m => ({ default: m.Cell })));
+const LineChart = lazy(() => import("recharts").then(m => ({ default: m.LineChart })));
+const Line = lazy(() => import("recharts").then(m => ({ default: m.Line })));
 
 interface UserGoals {
   daily_calorie_goal: number;
@@ -28,161 +42,153 @@ interface DailyTotals {
 const COLORS = ['#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
 const Goals = () => {
+  const [newWeight, setNewWeight] = useState("");
+  const [newHeight, setNewHeight] = useState("");
+  const [editing, setEditing] = useState(false);
   const [goals, setGoals] = useState<UserGoals>({
     daily_calorie_goal: 2000,
     daily_protein_goal: 50,
     daily_fat_goal: 70,
     daily_carbs_goal: 250,
   });
-  const [todayTotals, setTodayTotals] = useState<DailyTotals>({ calories: 0, protein: 0, fat: 0, carbs: 0 });
-  const [weeklyData, setWeeklyData] = useState<any[]>([]);
-  const [weightData, setWeightData] = useState<any[]>([]);
-  const [newWeight, setNewWeight] = useState("");
-  const [newHeight, setNewHeight] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState(false);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    loadGoalsAndProgress();
-  }, []);
-
-  const loadGoalsAndProgress = async () => {
-    try {
+  // Fetch all data with React Query for caching
+  const { data: goalsData, isLoading: goalsLoading } = useQuery({
+    queryKey: ["userGoals"],
+    queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // Load goals
-      const { data: goalsData } = await supabase
+      if (!user) throw new Error("Not authenticated");
+      const { data, error } = await supabase
         .from("user_goals")
         .select("*")
         .eq("user_id", user.id)
         .single();
+      if (error) throw error;
+      return data;
+    },
+  });
 
-      if (goalsData) {
-        setGoals({
-          daily_calorie_goal: goalsData.daily_calorie_goal,
-          daily_protein_goal: goalsData.daily_protein_goal,
-          daily_fat_goal: goalsData.daily_fat_goal,
-          daily_carbs_goal: goalsData.daily_carbs_goal,
-        });
-      }
-
-      // Load today's totals
+  const { data: todayTotals = { calories: 0, protein: 0, fat: 0, carbs: 0 }, isLoading: todayLoading } = useQuery({
+    queryKey: ["todayTotals"],
+    queryFn: async () => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const { data: todayScans } = await supabase
+      const { data, error } = await supabase
         .from("scan_history")
         .select("calories, protein, fat, carbs")
         .gte("scanned_at", today.toISOString());
+      if (error) throw error;
+      return data.reduce(
+        (acc, scan) => ({
+          calories: acc.calories + scan.calories,
+          protein: acc.protein + scan.protein,
+          fat: acc.fat + scan.fat,
+          carbs: acc.carbs + scan.carbs,
+        }),
+        { calories: 0, protein: 0, fat: 0, carbs: 0 }
+      );
+    },
+  });
 
-      if (todayScans) {
-        const totals = todayScans.reduce(
-          (acc, scan) => ({
-            calories: acc.calories + scan.calories,
-            protein: acc.protein + scan.protein,
-            fat: acc.fat + scan.fat,
-            carbs: acc.carbs + scan.carbs,
-          }),
-          { calories: 0, protein: 0, fat: 0, carbs: 0 }
-        );
-        setTodayTotals(totals);
-      }
-
-      // Load weekly data
+  const { data: weeklyData = [], isLoading: weeklyLoading } = useQuery({
+    queryKey: ["weeklyData"],
+    queryFn: async () => {
       const weekStart = startOfWeek(new Date());
-      const { data: weekScans } = await supabase
+      const { data, error } = await supabase
         .from("scan_history")
         .select("calories, scanned_at")
         .gte("scanned_at", weekStart.toISOString());
+      if (error) throw error;
+      const dailyCalories: any = {};
+      data.forEach(scan => {
+        const day = new Date(scan.scanned_at).toLocaleDateString('en-US', { weekday: 'short' });
+        dailyCalories[day] = (dailyCalories[day] || 0) + scan.calories;
+      });
+      return Object.entries(dailyCalories).map(([day, calories]) => ({ day, calories }));
+    },
+  });
 
-      if (weekScans) {
-        const dailyCalories: any = {};
-        weekScans.forEach(scan => {
-          const day = new Date(scan.scanned_at).toLocaleDateString('en-US', { weekday: 'short' });
-          dailyCalories[day] = (dailyCalories[day] || 0) + scan.calories;
-        });
-        
-        const chartData = Object.entries(dailyCalories).map(([day, calories]) => ({
-          day,
-          calories,
-        }));
-        setWeeklyData(chartData);
-      }
-
-      // Load weight history
-      const { data: weightEntries } = await supabase
+  const { data: weightData = [], isLoading: weightLoading } = useQuery({
+    queryKey: ["weightData"],
+    queryFn: async () => {
+      const { data, error } = await supabase
         .from("weight_entries")
         .select("weight, height, recorded_at")
         .order("recorded_at", { ascending: true })
         .limit(30);
+      if (error) throw error;
+      return data.map(entry => ({
+        date: format(new Date(entry.recorded_at), 'MMM dd'),
+        weight: entry.weight,
+        height: entry.height,
+      }));
+    },
+  });
 
-      if (weightEntries) {
-        const formattedWeightData = weightEntries.map(entry => ({
-          date: format(new Date(entry.recorded_at), 'MMM dd'),
-          weight: entry.weight,
-          height: entry.height,
-        }));
-        setWeightData(formattedWeightData);
-      }
-    } catch (error: any) {
-      toast.error("Failed to load goals and progress");
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    if (goalsData) {
+      setGoals({
+        daily_calorie_goal: goalsData.daily_calorie_goal,
+        daily_protein_goal: goalsData.daily_protein_goal,
+        daily_fat_goal: goalsData.daily_fat_goal,
+        daily_carbs_goal: goalsData.daily_carbs_goal,
+      });
     }
-  };
+  }, [goalsData]);
 
-  const addWeightEntry = async () => {
-    if (!newWeight) {
-      toast.error("Please enter your weight");
-      return;
-    }
-
-    try {
+  const addWeightMutation = useMutation({
+    mutationFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
+      if (!user) throw new Error("Not authenticated");
       const { error } = await supabase.from("weight_entries").insert({
         user_id: user.id,
         weight: parseFloat(newWeight),
         height: newHeight ? parseFloat(newHeight) : null,
       });
-
       if (error) throw error;
-
+    },
+    onSuccess: () => {
       toast.success("Weight entry added!");
       setNewWeight("");
       setNewHeight("");
-      loadGoalsAndProgress();
-    } catch (error: any) {
-      toast.error("Failed to add weight entry");
-    }
-  };
+      queryClient.invalidateQueries({ queryKey: ["weightData"] });
+    },
+    onError: () => toast.error("Failed to add weight entry"),
+  });
 
-  const saveGoals = async () => {
-    try {
+  const saveGoalsMutation = useMutation({
+    mutationFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { error } = await supabase
-        .from("user_goals")
-        .upsert({
-          user_id: user.id,
-          ...goals,
-        });
-
+      if (!user) throw new Error("Not authenticated");
+      const { error } = await supabase.from("user_goals").upsert({ user_id: user.id, ...goals });
       if (error) throw error;
+    },
+    onSuccess: () => {
       toast.success("Goals updated successfully!");
       setEditing(false);
-    } catch (error: any) {
-      toast.error("Failed to save goals");
+      queryClient.invalidateQueries({ queryKey: ["userGoals"] });
+    },
+    onError: () => toast.error("Failed to save goals"),
+  });
+
+  const addWeightEntry = () => {
+    if (!newWeight) {
+      toast.error("Please enter your weight");
+      return;
     }
+    addWeightMutation.mutate();
   };
+
+  const saveGoals = () => saveGoalsMutation.mutate();
 
   const macrosData = [
     { name: 'Protein', value: todayTotals.protein },
     { name: 'Fat', value: todayTotals.fat },
     { name: 'Carbs', value: todayTotals.carbs },
   ];
+
+  const loading = goalsLoading || todayLoading || weeklyLoading || weightLoading;
 
   if (loading) {
     return (
@@ -252,15 +258,17 @@ const Goals = () => {
               <CardTitle>Weekly Calorie Trend</CardTitle>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={weeklyData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="day" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="calories" fill="hsl(var(--primary))" />
-                </BarChart>
-              </ResponsiveContainer>
+              <Suspense fallback={<Loader2 className="w-6 h-6 animate-spin mx-auto" />}>
+                <ResponsiveContainer width="100%" height={250}>
+                  <BarChart data={weeklyData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="day" />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="calories" fill="hsl(var(--primary))" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </Suspense>
             </CardContent>
           </Card>
         )}
@@ -272,25 +280,27 @@ const Goals = () => {
               <CardTitle>Today's Macros Distribution</CardTitle>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={250}>
-                <PieChart>
-                  <Pie
-                    data={macrosData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, value }) => `${name}: ${value}g`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {macrosData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
+              <Suspense fallback={<Loader2 className="w-6 h-6 animate-spin mx-auto" />}>
+                <ResponsiveContainer width="100%" height={250}>
+                  <PieChart>
+                    <Pie
+                      data={macrosData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, value }) => `${name}: ${value}g`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {macrosData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </Suspense>
             </CardContent>
           </Card>
         )}
@@ -331,15 +341,17 @@ const Goals = () => {
             
             {weightData.length > 0 && (
               <div className="mt-4">
-                <ResponsiveContainer width="100%" height={200}>
-                  <LineChart data={weightData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis />
-                    <Tooltip />
-                    <Line type="monotone" dataKey="weight" stroke="hsl(var(--primary))" strokeWidth={2} />
-                  </LineChart>
-                </ResponsiveContainer>
+                <Suspense fallback={<Loader2 className="w-6 h-6 animate-spin mx-auto" />}>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <LineChart data={weightData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" />
+                      <YAxis />
+                      <Tooltip />
+                      <Line type="monotone" dataKey="weight" stroke="hsl(var(--primary))" strokeWidth={2} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </Suspense>
               </div>
             )}
           </CardContent>
