@@ -27,7 +27,7 @@ const Settings = () => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [language, setLanguage] = useState("en");
-  const [remindersEnabled, setRemindersEnabled] = useState(true);
+  const [remindersEnabled, setRemindersEnabled] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -42,6 +42,18 @@ const Settings = () => {
     };
     checkUser();
   }, [navigate]);
+
+  // Initialize reminders toggle from localStorage
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('mealRemindersEnabled');
+      if (stored !== null) {
+        setRemindersEnabled(stored === 'true');
+      }
+    } catch (e) {
+      // no-op
+    }
+  }, []);
 
   const loadSettings = async () => {
     try {
@@ -81,31 +93,60 @@ const Settings = () => {
 
   const toggleReminders = async (enabled: boolean) => {
     try {
-      const { initializeOneSignal, requestNotificationPermission, scheduleMealReminders } = await import("@/lib/onesignal");
-      
-      setRemindersEnabled(enabled);
-      
       if (enabled) {
-        // Request notification permission
-        const permission = await requestNotificationPermission();
-        if (!permission) {
-          toast.error("Notification permission denied");
+        // Handle enable flow: request permission before changing the UI state
+        if (typeof Notification === "undefined") {
+          toast.error("Notifications not supported on this device");
           setRemindersEnabled(false);
+          localStorage.setItem("mealRemindersEnabled", "false");
           return;
         }
-        
-        // Initialize OneSignal
+
+        if (Notification.permission === "denied") {
+          toast.error("Notification permission denied in browser settings");
+          setRemindersEnabled(false);
+          localStorage.setItem("mealRemindersEnabled", "false");
+          return;
+        }
+
+        const { initializeOneSignal, requestNotificationPermission, scheduleMealReminders } = await import("@/lib/onesignal");
+
+        const granted = Notification.permission === "granted" ? true : await requestNotificationPermission();
+        if (!granted) {
+          toast.error("Notification permission denied");
+          setRemindersEnabled(false);
+          localStorage.setItem("mealRemindersEnabled", "false");
+          return;
+        }
+
         await initializeOneSignal();
-        
-        // Schedule meal reminders
         await scheduleMealReminders();
-        
+
+        setRemindersEnabled(true);
+        localStorage.setItem("mealRemindersEnabled", "true");
         toast.success("Meal reminders enabled");
       } else {
+        // Handle disable flow: persist off state and attempt to unsubscribe
+        setRemindersEnabled(false);
+        localStorage.setItem("mealRemindersEnabled", "false");
+        try {
+          const OneSignal = (window as any).OneSignal;
+          if (OneSignal && typeof OneSignal.push === "function") {
+            OneSignal.push(() => {
+              if (OneSignal.setSubscription) {
+                OneSignal.setSubscription(false);
+              }
+            });
+          }
+        } catch (_) {
+          // no-op
+        }
         toast.success("Meal reminders disabled");
       }
     } catch (error) {
       console.error("Failed to toggle reminders:", error);
+      setRemindersEnabled(false);
+      localStorage.setItem("mealRemindersEnabled", "false");
       toast.error("Failed to update reminder settings");
     }
   };
