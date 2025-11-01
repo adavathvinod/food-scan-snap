@@ -7,7 +7,6 @@ import MultiItemNutritionCard from "@/components/MultiItemNutritionCard";
 import Layout from "@/components/Layout";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { useTranslation } from "@/hooks/useTranslation";
 
 interface NutritionData {
   foodName: string;
@@ -28,13 +27,6 @@ const Index = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [user, setUser] = useState<any>(null);
   const navigate = useNavigate();
-  
-  const { t } = useTranslation([
-    "Food Scan Snap", "Capture or upload food images for instant nutrition insights",
-    "Or", "Analyzing your food...", 
-    "Our AI is identifying the food and gathering nutrition information",
-    "Food analyzed and saved!", "Failed to analyze food. Please try again."
-  ]);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -122,11 +114,11 @@ const Index = () => {
           isMultiItem: data.isMultiItem || false,
         });
 
-        toast.success(t("Food analyzed and saved!"));
+        toast.success("Food analyzed and saved!");
       };
     } catch (error: any) {
       console.error("Error analyzing food:", error);
-      toast.error(error.message || t("Failed to analyze food. Please try again."));
+      toast.error(error.message || "Failed to analyze food. Please try again.");
     } finally {
       setIsAnalyzing(false);
     }
@@ -151,10 +143,10 @@ const Index = () => {
         {/* Header */}
         <header className="text-center mb-8">
           <h1 className="text-4xl md:text-5xl font-bold mb-2 text-foreground">
-            {t("Food Scan Snap")}
+            Food Scan Snap
           </h1>
           <p className="text-muted-foreground">
-            {t("Capture or upload food images for instant nutrition insights")}
+            Capture or upload food images for instant nutrition insights
           </p>
         </header>
 
@@ -168,7 +160,7 @@ const Index = () => {
                   <span className="w-full border-t" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground">{t("Or")}</span>
+                  <span className="bg-background px-2 text-muted-foreground">Or</span>
                 </div>
               </div>
               <ImageUpload onImageSelect={analyzeFood} isAnalyzing={isAnalyzing} />
@@ -178,10 +170,10 @@ const Index = () => {
               <div className="flex flex-col items-center justify-center py-12 space-y-4">
                 <Loader2 className="w-12 h-12 animate-spin text-primary" />
                 <p className="text-lg text-foreground font-medium">
-                  {t("Analyzing your food...")}
+                  Analyzing your food...
                 </p>
                 <p className="text-sm text-muted-foreground text-center max-w-md">
-                  {t("Our AI is identifying the food and gathering nutrition information")}
+                  Our AI is identifying the food and gathering nutrition information
                 </p>
               </div>
             )}

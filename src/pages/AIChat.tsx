@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Send, Loader2, Camera, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { useTranslation } from "@/hooks/useTranslation";
 
 interface Message {
   role: "user" | "assistant";
@@ -21,16 +20,6 @@ const AIChat = () => {
   const [user, setUser] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-  
-  const { t } = useTranslation([
-    "AI Health Assistant", "Ask me anything about nutrition and health",
-    "Start a conversation! Ask me about:", "Nutrition advice for specific conditions",
-    "Meal planning and recipes", "Indian diet recommendations",
-    "Health tips and guidance", "Ask about nutrition, health, or upload an image...",
-    "⚠️ For information only — consult a doctor for medical advice.",
-    "Chat history cleared", "Failed to clear history",
-    "Failed to send message", "Analyze this image"
-  ]);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -105,7 +94,7 @@ const AIChat = () => {
       setMessages(prev => [...prev, assistantMessage]);
     } catch (error: any) {
       console.error("Error sending message:", error);
-      toast.error(error.message || t("Failed to send message"));
+      toast.error(error.message || "Failed to send message");
       
       // Remove failed user message
       setMessages(prev => prev.slice(0, -1));
@@ -122,7 +111,7 @@ const AIChat = () => {
     reader.readAsDataURL(file);
     
     reader.onloadend = () => {
-      sendMessage(t("Analyze this image"), reader.result as string);
+      sendMessage("Analyze this image", reader.result as string);
     };
   };
 
@@ -138,10 +127,10 @@ const AIChat = () => {
       if (error) throw error;
       
       setMessages([]);
-      toast.success(t("Chat history cleared"));
+      toast.success("Chat history cleared");
     } catch (error) {
       console.error("Error clearing history:", error);
-      toast.error(t("Failed to clear history"));
+      toast.error("Failed to clear history");
     }
   };
 
@@ -161,8 +150,8 @@ const AIChat = () => {
         {/* Header */}
         <div className="p-4 border-b border-border bg-card flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">{t("AI Health Assistant")}</h1>
-            <p className="text-sm text-muted-foreground">{t("Ask me anything about nutrition and health")}</p>
+            <h1 className="text-2xl font-bold text-foreground">AI Health Assistant</h1>
+            <p className="text-sm text-muted-foreground">Ask me anything about nutrition and health</p>
           </div>
           <Button
             variant="ghost"
@@ -180,13 +169,13 @@ const AIChat = () => {
             <Card className="border-dashed bg-secondary/20">
               <CardContent className="p-8 text-center">
                 <p className="text-muted-foreground mb-4">
-                  {t("Start a conversation! Ask me about:")}
+                  Start a conversation! Ask me about:
                 </p>
                 <div className="grid gap-2 text-sm text-muted-foreground">
-                  <p>• {t("Nutrition advice for specific conditions")}</p>
-                  <p>• {t("Meal planning and recipes")}</p>
-                  <p>• {t("Indian diet recommendations")}</p>
-                  <p>• {t("Health tips and guidance")}</p>
+                  <p>• Nutrition advice for specific conditions</p>
+                  <p>• Meal planning and recipes</p>
+                  <p>• Indian diet recommendations</p>
+                  <p>• Health tips and guidance</p>
                 </div>
               </CardContent>
             </Card>
@@ -246,7 +235,7 @@ const AIChat = () => {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && !loading && sendMessage()}
-              placeholder={t("Ask about nutrition, health, or upload an image...")}
+              placeholder="Ask about nutrition, health, or upload an image..."
               disabled={loading}
               className="flex-1"
             />
@@ -259,7 +248,7 @@ const AIChat = () => {
             </Button>
           </div>
           <p className="text-xs text-muted-foreground mt-2 text-center">
-            {t("⚠️ For information only — consult a doctor for medical advice.")}
+            ⚠️ For information only — consult a doctor for medical advice.
           </p>
         </div>
       </div>

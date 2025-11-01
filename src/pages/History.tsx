@@ -6,7 +6,6 @@ import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
-import { useTranslation } from "@/hooks/useTranslation";
 
 interface ScanRecord {
   id: string;
@@ -23,12 +22,6 @@ interface ScanRecord {
 const History = () => {
   const [scans, setScans] = useState<ScanRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  
-  const { t, loading: translationLoading } = useTranslation([
-    "Scan History", "No scans yet. Start scanning food to build your history!",
-    "Calories", "Protein", "Fat", "Carbs", "Scan deleted", "Failed to delete scan",
-    "Failed to load history"
-  ]);
 
   const loadHistory = async () => {
     try {
@@ -40,7 +33,7 @@ const History = () => {
       if (error) throw error;
       setScans(data || []);
     } catch (error: any) {
-      toast.error(t("Failed to load history"));
+      toast.error("Failed to load history");
     } finally {
       setLoading(false);
     }
@@ -55,9 +48,9 @@ const History = () => {
 
       if (error) throw error;
       setScans(scans.filter(scan => scan.id !== id));
-      toast.success(t("Scan deleted"));
+      toast.success("Scan deleted");
     } catch (error: any) {
-      toast.error(t("Failed to delete scan"));
+      toast.error("Failed to delete scan");
     }
   };
 
@@ -65,25 +58,19 @@ const History = () => {
     loadHistory();
   }, []);
 
-  if (loading || translationLoading) {
-    return (
-      <Layout>
-        <div className="flex justify-center items-center py-20">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        </div>
-      </Layout>
-    );
-  }
-
   return (
     <Layout>
       <div className="container max-w-4xl mx-auto p-4 pt-8">
-        <h1 className="text-3xl font-bold mb-6 text-foreground">{t("Scan History")}</h1>
+        <h1 className="text-3xl font-bold mb-6 text-foreground">Scan History</h1>
 
-        {scans.length === 0 ? (
+        {loading ? (
+          <div className="flex justify-center items-center py-20">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        ) : scans.length === 0 ? (
           <Card>
             <CardContent className="py-20 text-center text-muted-foreground">
-              {t("No scans yet. Start scanning food to build your history!")}
+              No scans yet. Start scanning food to build your history!
             </CardContent>
           </Card>
         ) : (
@@ -118,19 +105,19 @@ const History = () => {
                   <div className="grid grid-cols-4 gap-4 mb-4">
                     <div className="text-center">
                       <p className="text-2xl font-bold text-primary">{scan.calories}</p>
-                      <p className="text-xs text-muted-foreground">{t("Calories")}</p>
+                      <p className="text-xs text-muted-foreground">Calories</p>
                     </div>
                     <div className="text-center">
                       <p className="text-2xl font-bold text-primary">{scan.protein}g</p>
-                      <p className="text-xs text-muted-foreground">{t("Protein")}</p>
+                      <p className="text-xs text-muted-foreground">Protein</p>
                     </div>
                     <div className="text-center">
                       <p className="text-2xl font-bold text-primary">{scan.fat}g</p>
-                      <p className="text-xs text-muted-foreground">{t("Fat")}</p>
+                      <p className="text-xs text-muted-foreground">Fat</p>
                     </div>
                     <div className="text-center">
                       <p className="text-2xl font-bold text-primary">{scan.carbs}g</p>
-                      <p className="text-xs text-muted-foreground">{t("Carbs")}</p>
+                      <p className="text-xs text-muted-foreground">Carbs</p>
                     </div>
                   </div>
                   {scan.health_tip && (

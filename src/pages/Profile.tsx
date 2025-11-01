@@ -9,7 +9,6 @@ import { Label } from "@/components/ui/label";
 import { Loader2, LogOut } from "lucide-react";
 import Layout from "@/components/Layout";
 import { toast } from "sonner";
-import { useTranslation } from "@/hooks/useTranslation";
 
 interface Profile {
   email: string;
@@ -26,14 +25,6 @@ const Profile = () => {
   const [fullName, setFullName] = useState("");
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  
-  const { t, loading: translationLoading } = useTranslation([
-    "Profile", "Personal Information", "Manage your account details",
-    "Email", "Full Name", "Save", "Cancel", "Edit Profile",
-    "Your Stats", "Track your scanning activity", "Total Scans",
-    "Avg Calories/Scan", "Log Out", "Profile updated!",
-    "Failed to update profile", "Failed to log out"
-  ]);
 
   const { data: profileData, isLoading: profileLoading } = useQuery({
     queryKey: ["profile"],
@@ -73,11 +64,11 @@ const Profile = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success(t("Profile updated!"));
+      toast.success("Profile updated!");
       setEditing(false);
       queryClient.invalidateQueries({ queryKey: ["profile"] });
     },
-    onError: () => toast.error(t("Failed to update profile")),
+    onError: () => toast.error("Failed to update profile"),
   });
 
   const handleLogout = async () => {
@@ -85,7 +76,7 @@ const Profile = () => {
       await supabase.auth.signOut();
       navigate("/auth");
     } catch (error: any) {
-      toast.error(t("Failed to log out"));
+      toast.error("Failed to log out");
     }
   };
 
@@ -96,7 +87,7 @@ const Profile = () => {
     }
   };
 
-  const loading = profileLoading || statsLoading || translationLoading;
+  const loading = profileLoading || statsLoading;
 
   if (loading) {
     return (
@@ -111,21 +102,21 @@ const Profile = () => {
   return (
     <Layout>
       <div className="container max-w-4xl mx-auto p-4 pt-8">
-        <h1 className="text-3xl font-bold mb-6 text-foreground">{t("Profile")}</h1>
+        <h1 className="text-3xl font-bold mb-6 text-foreground">Profile</h1>
 
         {/* Profile Info */}
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle>{t("Personal Information")}</CardTitle>
-            <CardDescription>{t("Manage your account details")}</CardDescription>
+            <CardTitle>Personal Information</CardTitle>
+            <CardDescription>Manage your account details</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label>{t("Email")}</Label>
+              <Label>Email</Label>
               <Input value={profileData?.email || ""} disabled />
             </div>
             <div className="space-y-2">
-              <Label>{t("Full Name")}</Label>
+              <Label>Full Name</Label>
               <Input
                 value={editing ? fullName : (profileData?.full_name || "")}
                 onChange={(e) => setFullName(e.target.value)}
@@ -134,11 +125,11 @@ const Profile = () => {
             </div>
             {editing ? (
               <div className="flex gap-2">
-                <Button onClick={() => saveProfileMutation.mutate()} className="flex-1">{t("Save")}</Button>
-                <Button onClick={() => setEditing(false)} variant="outline" className="flex-1">{t("Cancel")}</Button>
+                <Button onClick={() => saveProfileMutation.mutate()} className="flex-1">Save</Button>
+                <Button onClick={() => setEditing(false)} variant="outline" className="flex-1">Cancel</Button>
               </div>
             ) : (
-              <Button onClick={handleEdit} className="w-full">{t("Edit Profile")}</Button>
+              <Button onClick={handleEdit} className="w-full">Edit Profile</Button>
             )}
           </CardContent>
         </Card>
@@ -146,18 +137,18 @@ const Profile = () => {
         {/* Stats */}
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle>{t("Your Stats")}</CardTitle>
-            <CardDescription>{t("Track your scanning activity")}</CardDescription>
+            <CardTitle>Your Stats</CardTitle>
+            <CardDescription>Track your scanning activity</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-6">
               <div className="text-center p-4 bg-secondary rounded-lg">
                 <p className="text-3xl font-bold text-primary">{stats.totalScans}</p>
-                <p className="text-sm text-muted-foreground mt-1">{t("Total Scans")}</p>
+                <p className="text-sm text-muted-foreground mt-1">Total Scans</p>
               </div>
               <div className="text-center p-4 bg-secondary rounded-lg">
                 <p className="text-3xl font-bold text-primary">{stats.avgDailyCalories}</p>
-                <p className="text-sm text-muted-foreground mt-1">{t("Avg Calories/Scan")}</p>
+                <p className="text-sm text-muted-foreground mt-1">Avg Calories/Scan</p>
               </div>
             </div>
           </CardContent>
@@ -166,7 +157,7 @@ const Profile = () => {
         {/* Logout */}
         <Button onClick={handleLogout} variant="destructive" className="w-full">
           <LogOut className="w-4 h-4 mr-2" />
-          {t("Log Out")}
+          Log Out
         </Button>
       </div>
     </Layout>
