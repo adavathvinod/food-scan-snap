@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Loader2, Bell, Globe } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslation } from "@/hooks/useTranslation";
 
 const languages = [
   { code: "en", name: "English" },
@@ -29,6 +30,17 @@ const Settings = () => {
   const [language, setLanguage] = useState("en");
   const [remindersEnabled, setRemindersEnabled] = useState(false);
   const navigate = useNavigate();
+  
+  const { t, loading: translationLoading } = useTranslation([
+    "Settings", "Language", "Preferred Language",
+    "AI responses will be translated to your preferred language",
+    "Notifications", "Meal Reminders", "Get notified based on your meal schedule",
+    "Account", "Email:", "Food Scan Snap - Your AI-powered nutrition companion",
+    "Version 1.0.0", "Language preference saved", "Failed to save language preference",
+    "Notifications not supported on this device", "Notification permission denied in browser settings",
+    "Notification permission denied", "Meal reminders enabled", "Meal reminders disabled",
+    "Failed to update reminder settings"
+  ]);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -84,10 +96,12 @@ const Settings = () => {
       if (error) throw error;
       
       setLanguage(newLang);
-      toast.success("Language preference saved");
+      toast.success(t("Language preference saved"));
+      // Reload to apply translations
+      window.location.reload();
     } catch (error) {
       console.error("Error saving language:", error);
-      toast.error("Failed to save language preference");
+      toast.error(t("Failed to save language preference"));
     }
   };
 
@@ -95,14 +109,14 @@ const Settings = () => {
     try {
       if (enabled) {
         if (typeof Notification === "undefined") {
-          toast.error("Notifications not supported on this device");
+          toast.error(t("Notifications not supported on this device"));
           setRemindersEnabled(false);
           localStorage.setItem("mealRemindersEnabled", "false");
           return;
         }
 
         if (Notification.permission === "denied") {
-          toast.error("Notification permission denied in browser settings");
+          toast.error(t("Notification permission denied in browser settings"));
           setRemindersEnabled(false);
           localStorage.setItem("mealRemindersEnabled", "false");
           return;
@@ -114,7 +128,7 @@ const Settings = () => {
 
         const granted = Notification.permission === "granted" ? true : await requestNotificationPermission();
         if (!granted) {
-          toast.error("Notification permission denied");
+          toast.error(t("Notification permission denied"));
           setRemindersEnabled(false);
           localStorage.setItem("mealRemindersEnabled", "false");
           return;
@@ -125,7 +139,7 @@ const Settings = () => {
 
         setRemindersEnabled(true);
         localStorage.setItem("mealRemindersEnabled", "true");
-        toast.success("Meal reminders enabled");
+        toast.success(t("Meal reminders enabled"));
       } else {
         setRemindersEnabled(false);
         localStorage.setItem("mealRemindersEnabled", "false");
@@ -141,17 +155,17 @@ const Settings = () => {
         } catch (_) {
           // no-op
         }
-        toast.success("Meal reminders disabled");
+        toast.success(t("Meal reminders disabled"));
       }
     } catch (error) {
       console.error("Failed to toggle reminders:", error);
       setRemindersEnabled(false);
       localStorage.setItem("mealRemindersEnabled", "false");
-      toast.error("Failed to update reminder settings");
+      toast.error(t("Failed to update reminder settings"));
     }
   };
 
-  if (loading || !user) {
+  if (loading || !user || translationLoading) {
     return (
       <Layout>
         <div className="flex justify-center items-center h-screen">
@@ -164,7 +178,7 @@ const Settings = () => {
   return (
     <Layout>
       <div className="container max-w-2xl mx-auto p-4 pb-24">
-        <h1 className="text-3xl font-bold mb-6 text-foreground">Settings</h1>
+        <h1 className="text-3xl font-bold mb-6 text-foreground">{t("Settings")}</h1>
 
         <div className="space-y-4">
           {/* Language Settings */}
@@ -172,12 +186,12 @@ const Settings = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Globe className="w-5 h-5 text-primary" />
-                Language
+                {t("Language")}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                <Label>Preferred Language</Label>
+                <Label>{t("Preferred Language")}</Label>
                 <Select value={language} onValueChange={saveLanguage}>
                   <SelectTrigger>
                     <SelectValue />
@@ -191,7 +205,7 @@ const Settings = () => {
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  AI responses will be translated to your preferred language
+                  {t("AI responses will be translated to your preferred language")}
                 </p>
               </div>
             </CardContent>
@@ -202,15 +216,15 @@ const Settings = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Bell className="w-5 h-5 text-primary" />
-                Notifications
+                {t("Notifications")}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label>Meal Reminders</Label>
+                  <Label>{t("Meal Reminders")}</Label>
                   <p className="text-sm text-muted-foreground">
-                    Get notified based on your meal schedule
+                    {t("Get notified based on your meal schedule")}
                   </p>
                 </div>
                 <Switch
@@ -224,12 +238,12 @@ const Settings = () => {
           {/* Account Info */}
           <Card>
             <CardHeader>
-              <CardTitle>Account</CardTitle>
+              <CardTitle>{t("Account")}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Email:</span>
+                  <span className="text-muted-foreground">{t("Email:")}</span>
                   <span className="font-medium text-foreground">{user.email}</span>
                 </div>
               </div>
@@ -240,10 +254,10 @@ const Settings = () => {
           <Card className="border-primary/20 bg-primary/5">
             <CardContent className="p-4">
               <p className="text-sm text-foreground text-center">
-                Food Scan Snap - Your AI-powered nutrition companion
+                {t("Food Scan Snap - Your AI-powered nutrition companion")}
               </p>
               <p className="text-xs text-muted-foreground text-center mt-1">
-                Version 1.0.0
+                {t("Version 1.0.0")}
               </p>
             </CardContent>
           </Card>
