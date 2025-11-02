@@ -94,6 +94,7 @@ const Settings = () => {
   const toggleReminders = async (enabled: boolean) => {
     try {
       if (enabled) {
+        // Handle enable flow: request permission before changing the UI state
         if (typeof Notification === "undefined") {
           toast.error("Notifications not supported on this device");
           setRemindersEnabled(false);
@@ -108,9 +109,7 @@ const Settings = () => {
           return;
         }
 
-        // Lazy load OneSignal only when needed
-        const onesignalModule = await import("@/lib/onesignal");
-        const { initializeOneSignal, requestNotificationPermission, scheduleMealReminders } = onesignalModule;
+        const { initializeOneSignal, requestNotificationPermission, scheduleMealReminders } = await import("@/lib/onesignal");
 
         const granted = Notification.permission === "granted" ? true : await requestNotificationPermission();
         if (!granted) {
@@ -127,6 +126,7 @@ const Settings = () => {
         localStorage.setItem("mealRemindersEnabled", "true");
         toast.success("Meal reminders enabled");
       } else {
+        // Handle disable flow: persist off state and attempt to unsubscribe
         setRemindersEnabled(false);
         localStorage.setItem("mealRemindersEnabled", "false");
         try {

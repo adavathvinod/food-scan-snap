@@ -1,7 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,55 +20,70 @@ interface Stats {
 }
 
 const Profile = () => {
+  const [profile, setProfile] = useState<Profile>({ email: "", full_name: "" });
+  const [stats, setStats] = useState<Stats>({ totalScans: 0, avgDailyCalories: 0 });
+  const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
-  const [fullName, setFullName] = useState("");
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
 
-  const { data: profileData, isLoading: profileLoading } = useQuery({
-    queryKey: ["profile"],
-    queryFn: async () => {
+  useEffect(() => {
+    loadProfile();
+  }, []);
+
+  const loadProfile = async () => {
+    try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-      const { data, error } = await supabase
+      if (!user) return;
+
+      // Load profile
+      const { data: profileData } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", user.id)
         .single();
-      if (error) throw error;
-      return { email: data.email, full_name: data.full_name || "" };
-    },
-  });
 
-  const { data: stats = { totalScans: 0, avgDailyCalories: 0 }, isLoading: statsLoading } = useQuery({
-    queryKey: ["profileStats"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("scan_history").select("calories, scanned_at");
-      if (error) throw error;
-      const totalScans = data.length;
-      const totalCalories = data.reduce((sum, scan) => sum + scan.calories, 0);
-      const avgDailyCalories = totalScans > 0 ? Math.round(totalCalories / totalScans) : 0;
-      return { totalScans, avgDailyCalories };
-    },
-  });
+      if (profileData) {
+        setProfile({
+          email: profileData.email,
+          full_name: profileData.full_name || "",
+        });
+      }
 
-  const saveProfileMutation = useMutation({
-    mutationFn: async () => {
+      // Load stats
+      const { data: scans } = await supabase
+        .from("scan_history")
+        .select("calories, scanned_at");
+
+      if (scans) {
+        const totalScans = scans.length;
+        const totalCalories = scans.reduce((sum, scan) => sum + scan.calories, 0);
+        const avgDailyCalories = totalScans > 0 ? Math.round(totalCalories / totalScans) : 0;
+        setStats({ totalScans, avgDailyCalories });
+      }
+    } catch (error: any) {
+      toast.error("Failed to load profile");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const saveProfile = async () => {
+    try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
+      if (!user) return;
+
       const { error } = await supabase
         .from("profiles")
-        .update({ full_name: fullName })
+        .update({ full_name: profile.full_name })
         .eq("id", user.id);
+
       if (error) throw error;
-    },
-    onSuccess: () => {
       toast.success("Profile updated!");
       setEditing(false);
-      queryClient.invalidateQueries({ queryKey: ["profile"] });
-    },
-    onError: () => toast.error("Failed to update profile"),
-  });
+    } catch (error: any) {
+      toast.error("Failed to update profile");
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -79,15 +93,6 @@ const Profile = () => {
       toast.error("Failed to log out");
     }
   };
-
-  const handleEdit = () => {
-    if (profileData) {
-      setFullName(profileData.full_name);
-      setEditing(true);
-    }
-  };
-
-  const loading = profileLoading || statsLoading;
 
   if (loading) {
     return (
@@ -113,23 +118,23 @@ const Profile = () => {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label>Email</Label>
-              <Input value={profileData?.email || ""} disabled />
+              <Input value={profile.email} disabled />
             </div>
             <div className="space-y-2">
               <Label>Full Name</Label>
               <Input
-                value={editing ? fullName : (profileData?.full_name || "")}
-                onChange={(e) => setFullName(e.target.value)}
+                value={profile.full_name}
+                onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
                 disabled={!editing}
               />
             </div>
             {editing ? (
               <div className="flex gap-2">
-                <Button onClick={() => saveProfileMutation.mutate()} className="flex-1">Save</Button>
+                <Button onClick={saveProfile} className="flex-1">Save</Button>
                 <Button onClick={() => setEditing(false)} variant="outline" className="flex-1">Cancel</Button>
               </div>
             ) : (
-              <Button onClick={handleEdit} className="w-full">Edit Profile</Button>
+              <Button onClick={() => setEditing(true)} className="w-full">Edit Profile</Button>
             )}
           </CardContent>
         </Card>
