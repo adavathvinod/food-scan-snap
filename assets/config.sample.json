@@ -1,0 +1,16 @@
+{
+  "GEMINI_API_KEY": "your_gemini_api_key_here",
+  "CALORIENINJAS_KEY": "your_calorieninjas_api_key_here",
+  "ONESIGNAL_APP_ID": "your_onesignal_app_id_here",
+  "ONESIGNAL_REST_KEY": "your_onesignal_rest_api_key_here",
+  "SUPABASE_URL": "your_supabase_url_here",
+  "SUPABASE_ANON_KEY": "your_supabase_anon_key_here",
+  "FIREBASE_CONFIG": {
+    "apiKey": "optional_firebase_api_key",
+    "authDomain": "optional_firebase_auth_domain",
+    "projectId": "optional_firebase_project_id",
+    "storageBucket": "optional_firebase_storage_bucket",
+    "messagingSenderId": "optional_firebase_messaging_sender_id",
+    "appId": "optional_firebase_app_id"
+  }
+}

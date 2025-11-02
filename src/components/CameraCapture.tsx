@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { takePictureWithCamera, isNativeApp, requestCameraPermissions } from "@/utils/capacitor-camera";
 
 interface CameraCaptureProps {
   onCapture: (file: File) => void;
@@ -11,9 +12,26 @@ interface CameraCaptureProps {
 const CameraCapture = ({ onCapture, isAnalyzing }: CameraCaptureProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleCameraClick = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
+  const handleCameraClick = async () => {
+    if (isNativeApp()) {
+      // Use Capacitor Camera for native app
+      const hasPermission = await requestCameraPermissions();
+      if (!hasPermission) {
+        toast.error("Camera permission denied");
+        return;
+      }
+
+      const file = await takePictureWithCamera();
+      if (file) {
+        onCapture(file);
+      } else {
+        toast.error("Failed to capture photo");
+      }
+    } else {
+      // Fall back to web camera
+      if (fileInputRef.current) {
+        fileInputRef.current.click();
+      }
     }
   };
 

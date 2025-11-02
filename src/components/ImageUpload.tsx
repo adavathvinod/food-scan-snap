@@ -1,6 +1,8 @@
 import { useState, useRef } from "react";
 import { Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { pickImageFromGallery, isNativeApp, requestCameraPermissions } from "@/utils/capacitor-camera";
+import { toast } from "sonner";
 
 interface ImageUploadProps {
   onImageSelect: (file: File) => void;
@@ -35,6 +37,27 @@ const ImageUpload = ({ onImageSelect, isAnalyzing }: ImageUploadProps) => {
     if (file) handleFile(file);
   };
 
+  const handleClick = async () => {
+    if (isNativeApp()) {
+      // Use Capacitor Gallery Picker for native app
+      const hasPermission = await requestCameraPermissions();
+      if (!hasPermission) {
+        toast.error("Gallery permission denied");
+        return;
+      }
+
+      const file = await pickImageFromGallery();
+      if (file) {
+        handleFile(file);
+      } else {
+        toast.error("Failed to pick image");
+      }
+    } else {
+      // Fall back to web file input
+      fileInputRef.current?.click();
+    }
+  };
+
   const clearImage = () => {
     setPreview(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -50,7 +73,7 @@ const ImageUpload = ({ onImageSelect, isAnalyzing }: ImageUploadProps) => {
           }}
           onDragLeave={() => setIsDragging(false)}
           onDrop={handleDrop}
-          onClick={() => fileInputRef.current?.click()}
+          onClick={handleClick}
           className={`border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all ${
             isDragging
               ? "border-primary bg-secondary/50 scale-105"
