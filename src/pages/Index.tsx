@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import ImageUpload from "@/components/ImageUpload";
 import CameraCapture from "@/components/CameraCapture";
 import MultiItemNutritionCard from "@/components/MultiItemNutritionCard";
+import FoodRecommendations from "@/components/FoodRecommendations";
 import Layout from "@/components/Layout";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -179,7 +180,13 @@ const Index = () => {
             )}
           </div>
         ) : (
-          <MultiItemNutritionCard data={nutritionData} onScanAnother={resetScan} />
+          <>
+            <MultiItemNutritionCard data={nutritionData} onScanAnother={resetScan} />
+            <FoodRecommendations 
+              scannedFood={nutritionData.foodName} 
+              language="en"
+            />
+          </>
         )}
       </div>
     </Layout>

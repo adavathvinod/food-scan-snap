@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Loader2, Bell, Globe } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { Loader2, Bell, Globe, ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
 
 const languages = [
@@ -28,6 +29,7 @@ const Settings = () => {
   const [loading, setLoading] = useState(true);
   const [language, setLanguage] = useState("en");
   const [remindersEnabled, setRemindersEnabled] = useState(false);
+  const [showRecommendations, setShowRecommendations] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -49,6 +51,10 @@ const Settings = () => {
       const stored = localStorage.getItem('mealRemindersEnabled');
       if (stored !== null) {
         setRemindersEnabled(stored === 'true');
+      }
+      const recommendationsSetting = localStorage.getItem('showFoodRecommendations');
+      if (recommendationsSetting !== null) {
+        setShowRecommendations(recommendationsSetting !== 'false');
       }
     } catch (e) {
       // no-op
@@ -216,6 +222,35 @@ const Settings = () => {
                 <Switch
                   checked={remindersEnabled}
                   onCheckedChange={toggleReminders}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Recommendations Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ShoppingBag className="w-5 h-5 text-primary" />
+                Smart Recommendations
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>Show Food Recommendations</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Display "You May Also Like" suggestions after scans
+                  </p>
+                </div>
+                <Switch
+                  checked={showRecommendations}
+                  onCheckedChange={(checked) => {
+                    setShowRecommendations(checked);
+                    localStorage.setItem('showFoodRecommendations', String(checked));
+                    window.dispatchEvent(new Event('storage'));
+                    toast.success(checked ? "Recommendations enabled" : "Recommendations disabled");
+                  }}
                 />
               </div>
             </CardContent>
