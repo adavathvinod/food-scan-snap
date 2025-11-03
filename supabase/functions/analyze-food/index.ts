@@ -1,3 +1,5 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.47.10';
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -17,6 +19,15 @@ Deno.serve(async (req) => {
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const CALORIENINJAS_API_KEY = Deno.env.get("CALORIENINJAS_API_KEY");
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+    const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
+
+    if (!LOVABLE_API_KEY || !CALORIENINJAS_API_KEY || !SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      throw new Error("Required environment variables not configured");
+    }
+
+    // Initialize Supabase client
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     if (!LOVABLE_API_KEY || !CALORIENINJAS_API_KEY) {
       throw new Error("API keys not configured");
@@ -120,9 +131,77 @@ If multiple items, list them all. If single item, still use array format.`
     }
 
     console.log("Identified food items:", foodItems.length);
-    console.log("Step 2: Fetching nutrition data from CalorieNinjas for all items...");
+    console.log("Step 2: Checking custom Indian food database, CalorieNinjas, then AI estimation...");
 
-    // Helper function to estimate nutrition with AI when CalorieNinjas fails
+    // Helper function to search custom Indian food database
+    const searchIndianFoodDatabase = async (foodName: string) => {
+      const lowerName = foodName.toLowerCase();
+      console.log(`Searching Indian food database for: ${foodName}`);
+      
+      // Try exact match first
+      const { data: exactMatch, error: exactError } = await supabase
+        .from('indian_food_nutrition')
+        .select('*')
+        .ilike('food_name', lowerName)
+        .maybeSingle();
+      
+      if (!exactError && exactMatch) {
+        console.log(`Found exact match in Indian food database: ${exactMatch.food_name}`);
+        return {
+          calories: exactMatch.calories,
+          protein_g: exactMatch.protein_g,
+          fat_total_g: exactMatch.fat_g,
+          carbohydrates_total_g: exactMatch.carbs_g,
+          fiber_g: exactMatch.fiber_g,
+          source: 'indian_database',
+          serving_size: exactMatch.serving_size
+        };
+      }
+      
+      // Try alternative names
+      const { data: altMatches, error: altError } = await supabase
+        .from('indian_food_nutrition')
+        .select('*')
+        .contains('alternative_names', [lowerName]);
+      
+      if (!altError && altMatches && altMatches.length > 0) {
+        const match = altMatches[0];
+        console.log(`Found alternative name match in Indian food database: ${match.food_name}`);
+        return {
+          calories: match.calories,
+          protein_g: match.protein_g,
+          fat_total_g: match.fat_g,
+          carbohydrates_total_g: match.carbs_g,
+          fiber_g: match.fiber_g,
+          source: 'indian_database',
+          serving_size: match.serving_size
+        };
+      }
+      
+      // Try partial match
+      const { data: partialMatches, error: partialError } = await supabase
+        .from('indian_food_nutrition')
+        .select('*')
+        .or(`food_name.ilike.%${lowerName}%,alternative_names.cs.{${lowerName}}`);
+      
+      if (!partialError && partialMatches && partialMatches.length > 0) {
+        const match = partialMatches[0];
+        console.log(`Found partial match in Indian food database: ${match.food_name}`);
+        return {
+          calories: match.calories,
+          protein_g: match.protein_g,
+          fat_total_g: match.fat_g,
+          carbohydrates_total_g: match.carbs_g,
+          fiber_g: match.fiber_g,
+          source: 'indian_database',
+          serving_size: match.serving_size
+        };
+      }
+      
+      return null;
+    };
+
+    // Helper function to estimate nutrition with AI when all else fails
     const estimateNutritionWithAI = async (foodName: string) => {
       console.log(`Using AI to estimate nutrition for: ${foodName}`);
       
@@ -186,32 +265,43 @@ Give realistic estimates for a single serving.`
       };
     };
 
-    // Step 2: Get nutrition data for each item from CalorieNinjas, with AI fallback
+    // Step 2: Get nutrition data for each item: Custom DB → CalorieNinjas → AI
     const nutritionPromises = foodItems.map(async (item: any) => {
       try {
-        // Try CalorieNinjas first
-        const nutritionResponse = await fetch(
-          `https://api.calorieninjas.com/v1/nutrition?query=${encodeURIComponent(item.name)}`,
-          {
-            headers: {
-              "X-Api-Key": CALORIENINJAS_API_KEY,
-            },
-          }
-        );
-
         let nutrition = null;
-        let isEstimated = false;
+        let source = 'unknown';
 
-        if (nutritionResponse.ok) {
-          const nutritionData = await nutritionResponse.json();
-          
-          if (nutritionData.items && nutritionData.items.length > 0) {
-            nutrition = nutritionData.items[0];
-            console.log(`Got nutrition from CalorieNinjas for ${item.name}`);
+        // Priority 1: Check custom Indian food database
+        const indianFood = await searchIndianFoodDatabase(item.name);
+        if (indianFood) {
+          nutrition = indianFood;
+          source = 'custom_database';
+          console.log(`✓ Found ${item.name} in custom Indian food database`);
+        }
+
+        // Priority 2: Try CalorieNinjas API
+        if (!nutrition) {
+          const nutritionResponse = await fetch(
+            `https://api.calorieninjas.com/v1/nutrition?query=${encodeURIComponent(item.name)}`,
+            {
+              headers: {
+                "X-Api-Key": CALORIENINJAS_API_KEY,
+              },
+            }
+          );
+
+          if (nutritionResponse.ok) {
+            const nutritionData = await nutritionResponse.json();
+            
+            if (nutritionData.items && nutritionData.items.length > 0) {
+              nutrition = nutritionData.items[0];
+              source = 'calorieninjas';
+              console.log(`✓ Got nutrition from CalorieNinjas for ${item.name}`);
+            }
           }
         }
 
-        // If CalorieNinjas fails, try alternative spellings for common Indian foods
+        // Priority 3: Try alternative spellings in CalorieNinjas
         if (!nutrition) {
           const alternatives: { [key: string]: string[] } = {
             'pakore': ['pakora', 'bhaji', 'vegetable fritter'],
@@ -242,18 +332,23 @@ Give realistic estimates for a single serving.`
               const altData = await altResponse.json();
               if (altData.items && altData.items.length > 0) {
                 nutrition = altData.items[0];
-                console.log(`Found nutrition using alternative name: ${altName}`);
+                source = 'calorieninjas_alt';
+                console.log(`✓ Found nutrition using alternative name: ${altName}`);
                 break;
               }
             }
           }
         }
 
-        // If still no data, use AI estimation
+        // Priority 4: Use AI estimation as last resort
         if (!nutrition) {
           nutrition = await estimateNutritionWithAI(item.name);
-          isEstimated = true;
+          source = 'ai_estimated';
+          console.log(`⚠ Using AI estimation for ${item.name}`);
         }
+
+        const isFromDatabase = source === 'custom_database';
+        const isEstimated = source === 'ai_estimated';
 
         return {
           name: item.name,
@@ -264,7 +359,10 @@ Give realistic estimates for a single serving.`
           fat: Math.round((nutrition.fat_total_g || 0) * 10) / 10,
           carbs: Math.round((nutrition.carbohydrates_total_g || 0) * 10) / 10,
           fiber: Math.round((nutrition.fiber_g || 0) * 10) / 10,
-          isEstimated
+          isEstimated,
+          isFromDatabase,
+          source,
+          servingSize: nutrition.serving_size || 'per serving'
         };
       } catch (error) {
         console.error(`Error getting nutrition for ${item.name}:`, error);
@@ -278,7 +376,10 @@ Give realistic estimates for a single serving.`
           fat: 5,
           carbs: 20,
           fiber: 2,
-          isEstimated: true
+          isEstimated: true,
+          isFromDatabase: false,
+          source: 'fallback',
+          servingSize: 'per serving'
         };
       }
     });
@@ -354,8 +455,21 @@ Format as JSON: {"tip": "...", "advice": "..."}`
 
     console.log("Health tip generated successfully");
 
-    // Check if any nutrition was estimated
+    // Check nutrition data sources
     const hasEstimated = itemsWithNutrition.some(item => item.isEstimated);
+    const hasDatabase = itemsWithNutrition.some(item => item.isFromDatabase);
+    const databaseCount = itemsWithNutrition.filter(item => item.isFromDatabase).length;
+    const estimatedCount = itemsWithNutrition.filter(item => item.isEstimated).length;
+
+    // Build source note
+    let sourceNote = '';
+    if (hasDatabase && hasEstimated) {
+      sourceNote = ` (${databaseCount} from database, ${estimatedCount} AI-estimated)`;
+    } else if (hasEstimated) {
+      sourceNote = ' (Some nutrition values are AI-estimated)';
+    } else if (hasDatabase) {
+      sourceNote = ' (Accurate Indian food nutrition data)';
+    }
 
     // Return combined results
     const result = {
@@ -365,7 +479,7 @@ Format as JSON: {"tip": "...", "advice": "..."}`
       fat: Math.round(totals.fat * 10) / 10,
       carbs: Math.round(totals.carbs * 10) / 10,
       fiber: Math.round(totals.fiber * 10) / 10,
-      healthTip: hasEstimated ? `${healthTip} (Note: Some nutrition values are AI-estimated)` : healthTip,
+      healthTip: hasEstimated || hasDatabase ? `${healthTip}${sourceNote}` : healthTip,
       quickAdvice: quickAdvice,
       items: itemsWithNutrition,
       isMultiItem: itemsWithNutrition.length > 1,

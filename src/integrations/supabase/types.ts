@@ -38,6 +38,54 @@ export type Database = {
         }
         Relationships: []
       }
+      indian_food_nutrition: {
+        Row: {
+          alternative_names: string[] | null
+          calories: number
+          carbs_g: number
+          category: string
+          created_at: string | null
+          fat_g: number
+          fiber_g: number
+          food_name: string
+          id: string
+          notes: string | null
+          protein_g: number
+          serving_size: string
+          updated_at: string | null
+        }
+        Insert: {
+          alternative_names?: string[] | null
+          calories: number
+          carbs_g: number
+          category: string
+          created_at?: string | null
+          fat_g: number
+          fiber_g: number
+          food_name: string
+          id?: string
+          notes?: string | null
+          protein_g: number
+          serving_size: string
+          updated_at?: string | null
+        }
+        Update: {
+          alternative_names?: string[] | null
+          calories?: number
+          carbs_g?: number
+          category?: string
+          created_at?: string | null
+          fat_g?: number
+          fiber_g?: number
+          food_name?: string
+          id?: string
+          notes?: string | null
+          protein_g?: number
+          serving_size?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       meal_schedules: {
         Row: {
           created_at: string
