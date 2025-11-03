@@ -122,47 +122,170 @@ If multiple items, list them all. If single item, still use array format.`
     console.log("Identified food items:", foodItems.length);
     console.log("Step 2: Fetching nutrition data from CalorieNinjas for all items...");
 
-    // Step 2: Get nutrition data for each item from CalorieNinjas
-    const nutritionPromises = foodItems.map(async (item: any) => {
-      const nutritionResponse = await fetch(
-        `https://api.calorieninjas.com/v1/nutrition?query=${encodeURIComponent(item.name)}`,
-        {
-          headers: {
-            "X-Api-Key": CALORIENINJAS_API_KEY,
-          },
-        }
-      );
-
-      if (!nutritionResponse.ok) {
-        console.error(`Failed to fetch nutrition for ${item.name}`);
-        return null;
-      }
-
-      const nutritionData = await nutritionResponse.json();
+    // Helper function to estimate nutrition with AI when CalorieNinjas fails
+    const estimateNutritionWithAI = async (foodName: string) => {
+      console.log(`Using AI to estimate nutrition for: ${foodName}`);
       
-      if (!nutritionData.items || nutritionData.items.length === 0) {
-        console.error(`No nutrition data found for ${item.name}`);
-        return null;
+      const estimateResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            {
+              role: "user",
+              content: `Estimate the nutritional values for a typical serving of: ${foodName}
+
+Be realistic and accurate. Consider:
+- Indian food portions (if applicable)
+- Common preparation methods
+- Average serving size
+
+Provide your response as JSON:
+{
+  "calories": number,
+  "protein_g": number,
+  "fat_g": number,
+  "carbs_g": number,
+  "fiber_g": number
+}
+
+Give realistic estimates for a single serving.`
+            }
+          ]
+        })
+      });
+
+      if (!estimateResponse.ok) {
+        throw new Error(`Failed to estimate nutrition for ${foodName}`);
       }
 
-      const nutrition = nutritionData.items[0];
+      const estimateData = await estimateResponse.json();
+      let content = estimateData.choices[0]?.message?.content?.trim() || "{}";
+      
+      // Parse JSON
+      if (content.includes("```json")) {
+        content = content.split("```json")[1].split("```")[0].trim();
+      } else if (content.includes("```")) {
+        content = content.split("```")[1].split("```")[0].trim();
+      }
+      
+      const estimated = JSON.parse(content);
+      console.log(`AI estimated nutrition for ${foodName}:`, estimated);
+      
       return {
-        name: item.name,
-        icon: item.icon,
-        description: item.description,
-        calories: Math.round(nutrition.calories || 0),
-        protein: Math.round(nutrition.protein_g * 10) / 10 || 0,
-        fat: Math.round(nutrition.fat_total_g * 10) / 10 || 0,
-        carbs: Math.round(nutrition.carbohydrates_total_g * 10) / 10 || 0,
-        fiber: Math.round(nutrition.fiber_g * 10) / 10 || 0,
+        calories: estimated.calories || 0,
+        protein_g: estimated.protein_g || 0,
+        fat_total_g: estimated.fat_g || 0,
+        carbohydrates_total_g: estimated.carbs_g || 0,
+        fiber_g: estimated.fiber_g || 0,
+        isEstimated: true
       };
+    };
+
+    // Step 2: Get nutrition data for each item from CalorieNinjas, with AI fallback
+    const nutritionPromises = foodItems.map(async (item: any) => {
+      try {
+        // Try CalorieNinjas first
+        const nutritionResponse = await fetch(
+          `https://api.calorieninjas.com/v1/nutrition?query=${encodeURIComponent(item.name)}`,
+          {
+            headers: {
+              "X-Api-Key": CALORIENINJAS_API_KEY,
+            },
+          }
+        );
+
+        let nutrition = null;
+        let isEstimated = false;
+
+        if (nutritionResponse.ok) {
+          const nutritionData = await nutritionResponse.json();
+          
+          if (nutritionData.items && nutritionData.items.length > 0) {
+            nutrition = nutritionData.items[0];
+            console.log(`Got nutrition from CalorieNinjas for ${item.name}`);
+          }
+        }
+
+        // If CalorieNinjas fails, try alternative spellings for common Indian foods
+        if (!nutrition) {
+          const alternatives: { [key: string]: string[] } = {
+            'pakore': ['pakora', 'bhaji', 'vegetable fritter'],
+            'pakora': ['bhaji', 'vegetable fritter'],
+            'roti': ['chapati', 'indian bread'],
+            'dosa': ['south indian crepe'],
+            'idli': ['steamed rice cake'],
+            'vada': ['lentil donut'],
+            'samosa': ['fried pastry'],
+            'biryani': ['rice pilaf', 'indian rice'],
+          };
+
+          const lowerName = item.name.toLowerCase();
+          const alternativeNames = alternatives[lowerName] || [];
+
+          for (const altName of alternativeNames) {
+            console.log(`Trying alternative name: ${altName}`);
+            const altResponse = await fetch(
+              `https://api.calorieninjas.com/v1/nutrition?query=${encodeURIComponent(altName)}`,
+              {
+                headers: {
+                  "X-Api-Key": CALORIENINJAS_API_KEY,
+                },
+              }
+            );
+
+            if (altResponse.ok) {
+              const altData = await altResponse.json();
+              if (altData.items && altData.items.length > 0) {
+                nutrition = altData.items[0];
+                console.log(`Found nutrition using alternative name: ${altName}`);
+                break;
+              }
+            }
+          }
+        }
+
+        // If still no data, use AI estimation
+        if (!nutrition) {
+          nutrition = await estimateNutritionWithAI(item.name);
+          isEstimated = true;
+        }
+
+        return {
+          name: item.name,
+          icon: item.icon,
+          description: item.description,
+          calories: Math.round(nutrition.calories || 0),
+          protein: Math.round((nutrition.protein_g || 0) * 10) / 10,
+          fat: Math.round((nutrition.fat_total_g || 0) * 10) / 10,
+          carbs: Math.round((nutrition.carbohydrates_total_g || 0) * 10) / 10,
+          fiber: Math.round((nutrition.fiber_g || 0) * 10) / 10,
+          isEstimated
+        };
+      } catch (error) {
+        console.error(`Error getting nutrition for ${item.name}:`, error);
+        // Return basic estimated values as last resort
+        return {
+          name: item.name,
+          icon: item.icon,
+          description: item.description,
+          calories: 150,
+          protein: 5,
+          fat: 5,
+          carbs: 20,
+          fiber: 2,
+          isEstimated: true
+        };
+      }
     });
 
-    const itemsWithNutrition = (await Promise.all(nutritionPromises)).filter(item => item !== null);
+    const itemsWithNutrition = await Promise.all(nutritionPromises);
     
-    if (itemsWithNutrition.length === 0) {
-      throw new Error("Could not fetch nutrition data for any items");
-    }
+    // All items should have nutrition now (from API or AI estimation)
 
     // Calculate totals
     const totals = itemsWithNutrition.reduce((acc, item) => ({
@@ -231,6 +354,9 @@ Format as JSON: {"tip": "...", "advice": "..."}`
 
     console.log("Health tip generated successfully");
 
+    // Check if any nutrition was estimated
+    const hasEstimated = itemsWithNutrition.some(item => item.isEstimated);
+
     // Return combined results
     const result = {
       foodName: itemsWithNutrition.length === 1 ? itemsWithNutrition[0].name : `${itemsWithNutrition.length} items`,
@@ -239,7 +365,7 @@ Format as JSON: {"tip": "...", "advice": "..."}`
       fat: Math.round(totals.fat * 10) / 10,
       carbs: Math.round(totals.carbs * 10) / 10,
       fiber: Math.round(totals.fiber * 10) / 10,
-      healthTip: healthTip,
+      healthTip: hasEstimated ? `${healthTip} (Note: Some nutrition values are AI-estimated)` : healthTip,
       quickAdvice: quickAdvice,
       items: itemsWithNutrition,
       isMultiItem: itemsWithNutrition.length > 1,
