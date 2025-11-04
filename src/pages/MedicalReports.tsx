@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Upload, Loader2, FileText, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
+import MedicalFoodRecommendations from "@/components/MedicalFoodRecommendations";
 
 interface MedicalReport {
   id: string;
@@ -253,6 +254,14 @@ const MedicalReports = () => {
                           </div>
                         )}
                       </div>
+                    )}
+
+                    {/* Food Ordering Recommendations */}
+                    {recommendations && (
+                      <MedicalFoodRecommendations
+                        foodsToEat={recommendations.foodsToEat || []}
+                        foodsToAvoid={recommendations.foodsToAvoid || []}
+                      />
                     )}
 
                     <p className="text-xs text-muted-foreground italic">

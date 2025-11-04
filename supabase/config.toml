@@ -12,6 +12,9 @@ verify_jwt = false
 [functions.get-food-recommendations]
 verify_jwt = false
 
+[functions.get-medical-food-recommendations]
+verify_jwt = false
+
 [functions.condition-advice]
 verify_jwt = false
 
