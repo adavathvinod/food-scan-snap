@@ -80,86 +80,111 @@ const FoodRecommendations = ({ scannedFood, language = "en" }: FoodRecommendatio
 
   const getDummyRecommendations = (food: string): FoodRecommendation[] => {
     const lowerFood = food.toLowerCase();
+    const link = (platform: string, term: string) => {
+      const q = encodeURIComponent(term);
+      if (platform === "Zomato") return `https://www.zomato.com/search?q=${q}`;
+      if (platform === "Swiggy") return `https://www.swiggy.com/search?q=${q}`;
+      if (platform === "Blinkit") return `https://blinkit.com/s/?q=${q}`;
+      if (platform === "Amazon") return `https://www.amazon.in/s?k=${q}`;
+      if (platform === "Flipkart") return `https://www.flipkart.com/search?q=${q}`;
+      return `https://www.google.com/search?q=${q}`;
+    };
     
     if (lowerFood.includes("biryani") || lowerFood.includes("rice")) {
       return [
         {
-          name: "Paneer Biryani",
-          description: "Aromatic vegetarian biryani with cottage cheese",
-          tag: "Protein Rich",
-          imageUrl: "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=300",
-          orderLink: "https://www.zomato.com",
+          name: "Boondi Raita",
+          description: "Cool yogurt with crispy boondi pearls",
+          tag: "Popular",
+          imageUrl: "https://images.unsplash.com/photo-1625398407796-82650a8c135f?w=300",
+          orderLink: link("Zomato", "raita"),
+          platform: "Zomato"
+        },
+        {
+          name: "Mirchi Salan",
+          description: "Hyderabadi chili peanut curry for biryani",
+          tag: "Classic",
+          imageUrl: "https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=300",
+          orderLink: link("Zomato", "mirchi salan"),
           platform: "Zomato"
         },
         {
           name: "Tandoori Chicken",
-          description: "Grilled chicken marinated in Indian spices",
+          description: "Grilled chicken marinated in spices",
           tag: "High Protein",
           imageUrl: "https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?w=300",
-          orderLink: "https://www.swiggy.com",
+          orderLink: link("Swiggy", "tandoori chicken"),
           platform: "Swiggy"
         },
         {
-          name: "Low-Oil Biryani Pack",
-          description: "Healthy biryani option with less oil",
-          tag: "Low Calorie",
-          imageUrl: "https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=300",
-          orderLink: "https://www.amazon.in",
-          platform: "Amazon"
+          name: "Soft Drink Can",
+          description: "Cola / soda to pair with meals",
+          tag: "Trending",
+          imageUrl: "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=300",
+          orderLink: link("Blinkit", "coke can"),
+          platform: "Blinkit"
         }
       ];
     } else if (lowerFood.includes("salad") || lowerFood.includes("juice")) {
       return [
         {
-          name: "Mixed Fruit Smoothie",
-          description: "Fresh fruits blended with yogurt",
-          tag: "Vitamin Rich",
-          imageUrl: "https://images.unsplash.com/photo-1505252585461-04db1eb84625?w=300",
-          orderLink: "https://www.zomato.com",
+          name: "Green Salad",
+          description: "Fresh salad with mixed greens",
+          tag: "Healthy",
+          imageUrl: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300",
+          orderLink: link("Zomato", "green salad"),
           platform: "Zomato"
         },
         {
-          name: "Quinoa Bowl",
-          description: "Protein-packed quinoa with vegetables",
-          tag: "Healthy Choice",
-          imageUrl: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300",
-          orderLink: "https://www.swiggy.com",
+          name: "Fruit Bowl",
+          description: "Seasonal fruits, ready to eat",
+          tag: "Vitamin Rich",
+          imageUrl: "https://images.unsplash.com/photo-1504711331083-98345f3f44d1?w=300",
+          orderLink: link("Swiggy", "fruit bowl"),
           platform: "Swiggy"
+        },
+        {
+          name: "Cold-Pressed Juice",
+          description: "Fresh cold-pressed juice pack",
+          tag: "Detox",
+          imageUrl: "https://images.unsplash.com/photo-1505252585461-04db1eb84625?w=300",
+          orderLink: link("Blinkit", "cold pressed juice"),
+          platform: "Blinkit"
         },
         {
           name: "Green Tea Pack",
           description: "Antioxidant-rich organic green tea",
-          tag: "Detox",
+          tag: "Light",
           imageUrl: "https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=300",
-          orderLink: "https://www.flipkart.com",
+          orderLink: link("Flipkart", "green tea"),
           platform: "Flipkart"
         }
       ];
     } else {
       return [
         {
-          name: "Grilled Vegetables",
-          description: "Healthy mix of seasonal vegetables",
-          tag: "Low Calorie",
-          imageUrl: "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=300",
-          orderLink: "https://www.zomato.com",
+          name: "Masala Papad",
+          description: "Crispy papad topped with onions and masala",
+          tag: "Snack",
+          imageUrl: "https://images.unsplash.com/photo-1626019183442-e48e8b8a4e0b?w=300",
+          orderLink: link("Zomato", "masala papad"),
           platform: "Zomato"
         },
         {
           name: "Protein Shake",
-          description: "Nutritious shake for fitness enthusiasts",
+          description: "Whey protein nutrition shake",
           tag: "Protein Rich",
           imageUrl: "https://images.unsplash.com/photo-1622597467836-f3285f2131b8?w=300",
-          orderLink: "https://www.amazon.in",
+          orderLink: link("Amazon", "whey protein"),
           platform: "Amazon"
         },
         {
-          name: "Brown Rice Bowl",
-          description: "Wholesome brown rice with dal",
-          tag: "Fiber Rich",
-          imageUrl: "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=300",
-          orderLink: "https://www.swiggy.com",
-          platform: "Swiggy"
+          name: "Curd (Dahi)",
+          description: "Fresh curd to pair with meals",
+          tag: "Cooling",
+          imageUrl: "https://images.unsplash.com/photo-1604908553488-c6e6e8dc1bd8?w=300",
+          orderLink: link("Blinkit", "dahi curd"),
+          platform: "Blinkit"
         }
       ];
     }

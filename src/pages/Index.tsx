@@ -183,7 +183,7 @@ const Index = () => {
           <>
             <MultiItemNutritionCard data={nutritionData} onScanAnother={resetScan} />
             <FoodRecommendations 
-              scannedFood={nutritionData.foodName} 
+              scannedFood={nutritionData.isMultiItem ? (nutritionData.items?.[0]?.name || nutritionData.foodName) : nutritionData.foodName} 
               language="en"
             />
           </>

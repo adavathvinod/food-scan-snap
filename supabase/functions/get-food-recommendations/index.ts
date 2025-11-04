@@ -146,6 +146,10 @@ Return ONLY the JSON array, no other text.`;
         orderLink = `https://www.amazon.in/s?k=${encodedSearch}`;
       } else if (rec.platform === "Flipkart") {
         orderLink = `https://www.flipkart.com/search?q=${encodedSearch}`;
+      } else if (rec.platform === "Blinkit") {
+        orderLink = `https://blinkit.com/s/?q=${encodedSearch}`;
+      } else if (rec.platform === "Zepto") {
+        orderLink = `https://www.zeptonow.com/search?q=${encodedSearch}`;
       }
 
       return {
@@ -154,6 +158,55 @@ Return ONLY the JSON array, no other text.`;
         orderLink
       };
     });
+
+    // Final fallback if AI returns nothing
+    if (!recommendations.length) {
+      const lower = (foodName || "").toLowerCase();
+      const fallback: any[] = lower.includes("biryani") ? [
+        { name: "Boondi Raita", description: "Cool yogurt with boondi", tag: "Popular", platform: "Zomato", searchTerm: "raita" },
+        { name: "Mirchi Salan", description: "Hyderabadi side for biryani", tag: "Classic", platform: "Zomato", searchTerm: "mirchi salan" },
+        { name: "Gulab Jamun", description: "Warm Indian dessert", tag: "Sweet", platform: "Swiggy", searchTerm: "gulab jamun" },
+        { name: "Soft Drink Can", description: "Cola / soda can", tag: "Trending", platform: "Blinkit", searchTerm: "coke can" },
+      ] : [
+        { name: "Masala Papad", description: "Crispy papad with toppings", tag: "Snack", platform: "Zomato", searchTerm: "masala papad" },
+        { name: "Curd (Dahi)", description: "Fresh curd", tag: "Cooling", platform: "Blinkit", searchTerm: "dahi curd" },
+        { name: "Protein Shake", description: "Whey protein pack", tag: "Protein Rich", platform: "Amazon", searchTerm: "whey protein" },
+      ];
+
+      const imageMap: any = {
+        "biryani": "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=400&q=80",
+        "raita": "https://images.unsplash.com/photo-1625398407796-82650a8c135f?w=400&q=80",
+        "salan": "https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=400&q=80",
+        "papad": "https://images.unsplash.com/photo-1626019183442-e48e8b8a4e0b?w=400&q=80",
+        "curd": "https://images.unsplash.com/photo-1604908553488-c6e6e8dc1bd8?w=400&q=80",
+        "protein": "https://images.unsplash.com/photo-1622597467836-f3285f2131b8?w=400&q=80",
+        "default": "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=400&q=80"
+      };
+
+      const mapLink = (platform: string, term: string) => {
+        const q = encodeURIComponent(term);
+        if (platform === "Zomato") return `https://www.zomato.com/search?q=${q}`;
+        if (platform === "Swiggy") return `https://www.swiggy.com/search?q=${q}`;
+        if (platform === "Amazon") return `https://www.amazon.in/s?k=${q}`;
+        if (platform === "Flipkart") return `https://www.flipkart.com/search?q=${q}`;
+        if (platform === "Blinkit") return `https://blinkit.com/s/?q=${q}`;
+        if (platform === "Zepto") return `https://www.zeptonow.com/search?q=${q}`;
+        return `https://www.google.com/search?q=${q}`;
+      };
+
+      recommendations = fallback.map((rec: any) => {
+        const lowerName = rec.name.toLowerCase();
+        let imageUrl = imageMap.default;
+        for (const [key, url] of Object.entries(imageMap)) {
+          if (lowerName.includes(key)) { imageUrl = url as string; break; }
+        }
+        return {
+          ...rec,
+          imageUrl,
+          orderLink: mapLink(rec.platform, rec.searchTerm || rec.name)
+        };
+      });
+    }
 
     return new Response(
       JSON.stringify({ recommendations }),
