@@ -42,16 +42,32 @@ const FoodRecommendations = ({ scannedFood, language = "en" }: FoodRecommendatio
       
       setIsLoading(true);
       try {
+        console.log("Fetching recommendations for:", scannedFood);
         const { data, error } = await supabase.functions.invoke('get-food-recommendations', {
           body: { foodName: scannedFood, language }
         });
 
-        if (error) throw error;
-        setRecommendations(data.recommendations || []);
+        if (error) {
+          console.error("Edge function error:", error);
+          throw error;
+        }
+        
+        console.log("Recommendations data:", data);
+        const recs = data?.recommendations || [];
+        console.log("Setting recommendations:", recs);
+        setRecommendations(recs);
+        
+        // If no recommendations from API, use dummy data
+        if (recs.length === 0) {
+          console.log("No recommendations from API, using fallback");
+          setRecommendations(getDummyRecommendations(scannedFood));
+        }
       } catch (error) {
         console.error("Error fetching recommendations:", error);
         // Fallback to static recommendations
-        setRecommendations(getDummyRecommendations(scannedFood));
+        const fallback = getDummyRecommendations(scannedFood);
+        console.log("Using dummy recommendations:", fallback);
+        setRecommendations(fallback);
       } finally {
         setIsLoading(false);
       }
