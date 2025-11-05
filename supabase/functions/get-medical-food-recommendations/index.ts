@@ -50,61 +50,66 @@ Example format:
   }
 ]`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          {
-            role: "system",
-            content: "You are a health food expert. Return ONLY valid JSON arrays with no markdown formatting."
-          },
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`AI API error (${response.status}):`, errorText);
-      
-      if (response.status === 429) {
-        throw new Error("Rate limit exceeded. Please try again later.");
-      }
-      if (response.status === 402) {
-        throw new Error("AI credits exhausted. Please add credits to continue.");
-      }
-      throw new Error(`Failed to get food recommendations: ${response.status} - ${errorText}`);
-    }
-
-    const data = await response.json();
-    let content = data.choices[0]?.message?.content?.trim() || "";
-
-    console.log("Raw AI response:", content);
-
-    // Clean up markdown formatting
-    if (content.includes("```json")) {
-      content = content.split("```json")[1].split("```")[0].trim();
-    } else if (content.includes("```")) {
-      content = content.split("```")[1].split("```")[0].trim();
-    }
-
-    let items = [];
+    let aiItems: any[] = [];
     try {
-      items = JSON.parse(content);
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            {
+              role: "system",
+              content: "You are a health food expert. Return ONLY valid JSON arrays with no markdown formatting."
+            },
+            {
+              role: "user",
+              content: prompt
+            }
+          ],
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`AI API error (${response.status}):`, errorText);
+        
+        if (response.status === 429) {
+          throw new Error("Rate limit exceeded. Please try again later.");
+        }
+        if (response.status === 402) {
+          throw new Error("AI credits exhausted. Please add credits to continue.");
+        }
+        throw new Error(`Failed to get food recommendations: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      let content = data.choices[0]?.message?.content?.trim() || "";
+
+      console.log("Raw AI response:", content);
+
+      // Clean up markdown formatting
+      if (content.includes("```json")) {
+        content = content.split("```json")[1].split("```")[0].trim();
+      } else if (content.includes("```")) {
+        content = content.split("```")[1].split("```")[0].trim();
+      }
+
+      try {
+        aiItems = JSON.parse(content);
+      } catch (e) {
+        console.error("Failed to parse AI response:", e);
+        aiItems = [];
+      }
     } catch (e) {
-      console.error("Failed to parse AI response:", e);
-      items = [];
+      console.error("AI gateway unavailable, using fallback:", e);
+      aiItems = [];
     }
 
-    console.log("Parsed items:", items);
+    console.log("Parsed items:", aiItems);
 
     // Image mapping for common Indian healthy foods
     const imageMap: { [key: string]: string } = {
@@ -144,7 +149,7 @@ Example format:
     };
 
     // Process items or use fallback
-    const recommendations = (items && items.length > 0 ? items : getFallbackItems(foodsToEat)).map((item: any) => ({
+    const recommendations = (aiItems && aiItems.length > 0 ? aiItems : getFallbackItems(foodsToEat)).map((item: any) => ({
       name: item.name,
       description: item.description,
       tag: item.tag,
