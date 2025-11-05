@@ -9,7 +9,31 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Verify authentication
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { foodsToEat = [], foodsToAvoid = [], language = "en" } = await req.json();
+
+    // Input validation
+    if (!Array.isArray(foodsToEat) || !Array.isArray(foodsToAvoid)) {
+      return new Response(JSON.stringify({ error: "Invalid input format" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    
+    if (foodsToEat.length === 0) {
+      return new Response(JSON.stringify({ error: "At least one food recommendation required" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     console.log("Getting medical food recommendations for:", foodsToEat);
 

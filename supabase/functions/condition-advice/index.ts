@@ -9,10 +9,30 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Verify authentication
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { condition } = await req.json();
 
-    if (!condition) {
-      throw new Error("Condition is required");
+    // Input validation
+    if (!condition || typeof condition !== 'string') {
+      return new Response(JSON.stringify({ error: "Valid condition text required" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    
+    if (condition.length > 500) {
+      return new Response(JSON.stringify({ error: "Condition description too long. Maximum 500 characters." }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");

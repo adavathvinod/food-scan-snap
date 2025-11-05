@@ -9,10 +9,30 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Verify authentication
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { image } = await req.json();
 
-    if (!image) {
-      throw new Error("No image provided");
+    // Input validation
+    if (!image || typeof image !== 'string') {
+      return new Response(JSON.stringify({ error: "Invalid image data" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    
+    if (image.length > 7000000) {
+      return new Response(JSON.stringify({ error: "Image too large. Maximum 5MB allowed." }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");

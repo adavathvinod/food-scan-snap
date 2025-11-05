@@ -1,22 +1,22 @@
 project_id = "byzyxnsbqmrtwfnhabjw"
 
 [functions.analyze-food]
-verify_jwt = false
+verify_jwt = true
 
 [functions.analyze-medical-report]
-verify_jwt = false
+verify_jwt = true
 
 [functions.health-chat]
-verify_jwt = false
+verify_jwt = true
 
 [functions.get-food-recommendations]
-verify_jwt = false
+verify_jwt = true
 
 [functions.get-medical-food-recommendations]
-verify_jwt = false
+verify_jwt = true
 
 [functions.condition-advice]
-verify_jwt = false
+verify_jwt = true
 
 [functions.parse-meal-schedule]
-verify_jwt = false
+verify_jwt = true

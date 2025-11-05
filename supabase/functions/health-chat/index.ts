@@ -11,7 +11,52 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Verify authentication
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { message, image, userId } = await req.json();
+    
+    // Input validation
+    if (!message && !image) {
+      return new Response(JSON.stringify({ error: "Message or image required" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    
+    if (message && typeof message !== 'string') {
+      return new Response(JSON.stringify({ error: "Invalid message format" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    
+    if (message && message.length > 2000) {
+      return new Response(JSON.stringify({ error: "Message too long. Maximum 2000 characters." }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    
+    if (image && typeof image !== 'string') {
+      return new Response(JSON.stringify({ error: "Invalid image format" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    
+    if (image && image.length > 7000000) {
+      return new Response(JSON.stringify({ error: "Image too large. Maximum 5MB allowed." }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     if (!message && !image) {
       throw new Error("No message or image provided");

@@ -11,11 +11,28 @@ serve(async (req) => {
   }
 
   try {
+    // Verify authentication
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { foodName, language = "en" } = await req.json();
 
-    if (!foodName) {
+    // Input validation
+    if (!foodName || typeof foodName !== 'string') {
       return new Response(
-        JSON.stringify({ error: "Food name is required" }),
+        JSON.stringify({ error: "Valid food name is required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    if (foodName.length > 200) {
+      return new Response(
+        JSON.stringify({ error: "Food name too long. Maximum 200 characters." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
