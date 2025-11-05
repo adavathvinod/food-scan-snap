@@ -72,13 +72,16 @@ Example format:
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`AI API error (${response.status}):`, errorText);
+      
       if (response.status === 429) {
         throw new Error("Rate limit exceeded. Please try again later.");
       }
       if (response.status === 402) {
         throw new Error("AI credits exhausted. Please add credits to continue.");
       }
-      throw new Error("Failed to get food recommendations");
+      throw new Error(`Failed to get food recommendations: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
