@@ -38,6 +38,51 @@ export type Database = {
         }
         Relationships: []
       }
+      food_stories: {
+        Row: {
+          calories: number
+          caption: string | null
+          carbs: number
+          created_at: string
+          fat: number
+          food_name: string
+          id: string
+          image_url: string
+          protein: number
+          story_image_url: string | null
+          template_style: string
+          user_id: string
+        }
+        Insert: {
+          calories: number
+          caption?: string | null
+          carbs: number
+          created_at?: string
+          fat: number
+          food_name: string
+          id?: string
+          image_url: string
+          protein: number
+          story_image_url?: string | null
+          template_style: string
+          user_id: string
+        }
+        Update: {
+          calories?: number
+          caption?: string | null
+          carbs?: number
+          created_at?: string
+          fat?: number
+          food_name?: string
+          id?: string
+          image_url?: string
+          protein?: number
+          story_image_url?: string | null
+          template_style?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       indian_food_nutrition: {
         Row: {
           alternative_names: string[] | null
@@ -272,6 +317,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_settings: {
+        Row: {
+          created_at: string
+          show_watermark: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          show_watermark?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          show_watermark?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       weight_entries: {
         Row: {

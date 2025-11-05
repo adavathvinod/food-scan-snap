@@ -28,9 +28,10 @@ interface MultiItemNutritionData {
 interface MultiItemNutritionCardProps {
   data: MultiItemNutritionData;
   onScanAnother: () => void;
+  onShareStory: () => void;
 }
 
-const MultiItemNutritionCard = ({ data, onScanAnother }: MultiItemNutritionCardProps) => {
+const MultiItemNutritionCard = ({ data, onScanAnother, onShareStory }: MultiItemNutritionCardProps) => {
   return (
     <div className="space-y-4 w-full max-w-2xl mx-auto">
       {/* Quick Advice Banner */}
@@ -156,10 +157,19 @@ const MultiItemNutritionCard = ({ data, onScanAnother }: MultiItemNutritionCardP
             </div>
           </div>
 
-          {/* Action Button */}
-          <Button onClick={onScanAnother} className="w-full" size="lg">
-            Scan Another Food
-          </Button>
+          {/* Action Buttons */}
+          <div className="flex gap-3">
+            <Button onClick={onScanAnother} variant="outline" className="flex-1" size="lg">
+              Scan Another
+            </Button>
+            <Button 
+              onClick={onShareStory}
+              className="flex-1" 
+              size="lg"
+            >
+              Share Story 🎉
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>

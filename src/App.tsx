@@ -12,6 +12,7 @@ import MedicalReports from "./pages/MedicalReports";
 import AIChat from "./pages/AIChat";
 import ConditionAdvice from "./pages/ConditionAdvice";
 import Settings from "./pages/Settings";
+import StoryGallery from "./pages/StoryGallery";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,6 +32,7 @@ const App = () => (
           <Route path="/reports" element={<MedicalReports />} />
           <Route path="/chat" element={<AIChat />} />
           <Route path="/advice" element={<ConditionAdvice />} />
+          <Route path="/stories" element={<StoryGallery />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

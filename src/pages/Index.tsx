@@ -5,6 +5,7 @@ import ImageUpload from "@/components/ImageUpload";
 import CameraCapture from "@/components/CameraCapture";
 import MultiItemNutritionCard from "@/components/MultiItemNutritionCard";
 import FoodRecommendations from "@/components/FoodRecommendations";
+import ShareStoryDialog from "@/components/ShareStoryDialog";
 import Layout from "@/components/Layout";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -27,6 +28,8 @@ const Index = () => {
   const [nutritionData, setNutritionData] = useState<NutritionData | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [user, setUser] = useState<any>(null);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [uploadedImageUrl, setUploadedImageUrl] = useState<string>("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -84,6 +87,11 @@ const Index = () => {
           ? supabase.storage.from('food-images').getPublicUrl(fileName).data.publicUrl
           : null;
 
+        // Store image URL for sharing
+        if (imageUrl) {
+          setUploadedImageUrl(imageUrl);
+        }
+
         // Save to database
         const { error: dbError } = await supabase
           .from('scan_history')
@@ -128,6 +136,21 @@ const Index = () => {
   const resetScan = () => {
     setNutritionData(null);
     setSelectedFile(null);
+    setUploadedImageUrl("");
+  };
+
+  const handleShareStory = () => {
+    if (!nutritionData) {
+      toast.error("Scan your food first to create your first Foody Story!");
+      return;
+    }
+    
+    if (!uploadedImageUrl) {
+      toast.error("Food image not available. Please scan again.");
+      return;
+    }
+
+    setShareDialogOpen(true);
   };
 
   if (!user) {
@@ -181,7 +204,11 @@ const Index = () => {
           </div>
         ) : (
           <>
-            <MultiItemNutritionCard data={nutritionData} onScanAnother={resetScan} />
+            <MultiItemNutritionCard 
+              data={nutritionData} 
+              onScanAnother={resetScan}
+              onShareStory={handleShareStory}
+            />
             <FoodRecommendations 
               scannedFood={nutritionData.isMultiItem ? (nutritionData.items?.[0]?.name || nutritionData.foodName) : nutritionData.foodName} 
               language="en"
@@ -189,6 +216,22 @@ const Index = () => {
           </>
         )}
       </div>
+
+      {/* Share Story Dialog */}
+      {nutritionData && uploadedImageUrl && (
+        <ShareStoryDialog
+          open={shareDialogOpen}
+          onOpenChange={setShareDialogOpen}
+          nutritionData={{
+            foodName: nutritionData.foodName,
+            calories: nutritionData.calories,
+            protein: nutritionData.protein,
+            fat: nutritionData.fat,
+            carbs: nutritionData.carbs,
+          }}
+          imageUrl={uploadedImageUrl}
+        />
+      )}
     </Layout>
   );
 };

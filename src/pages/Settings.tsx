@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import Layout from "@/components/Layout";
+import WatermarkToggle from "@/components/WatermarkToggle";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -235,7 +236,7 @@ const Settings = () => {
                 Smart Recommendations
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label>Show Food Recommendations</Label>
@@ -253,6 +254,8 @@ const Settings = () => {
                   }}
                 />
               </div>
+              <Separator />
+              <WatermarkToggle />
             </CardContent>
           </Card>
 
