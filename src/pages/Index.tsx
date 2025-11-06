@@ -163,6 +163,26 @@ const Index = () => {
 
   return (
     <Layout>
+      {/* Loading Overlay */}
+      {isAnalyzing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm animate-fade-in">
+          <div className="flex flex-col items-center justify-center space-y-6 p-8 rounded-lg bg-card/50 backdrop-blur-md border border-primary/20 shadow-lg animate-scale-in">
+            <div className="relative">
+              <Loader2 className="w-16 h-16 animate-spin text-primary drop-shadow-[0_0_15px_rgba(var(--primary),0.5)]" />
+              <div className="absolute inset-0 w-16 h-16 animate-ping rounded-full bg-primary/20" />
+            </div>
+            <div className="text-center space-y-2">
+              <p className="text-xl font-semibold text-foreground">
+                Analyzing your food… please wait 🍲
+              </p>
+              <p className="text-sm text-muted-foreground max-w-xs">
+                Our AI is identifying the food and gathering nutrition information
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="container max-w-2xl mx-auto p-4 pt-8">
         {/* Header */}
         <header className="text-center mb-8">
@@ -189,25 +209,6 @@ const Index = () => {
               </div>
               <ImageUpload onImageSelect={analyzeFood} isAnalyzing={isAnalyzing} />
             </div>
-            
-            {isAnalyzing && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm animate-fade-in">
-                <div className="flex flex-col items-center justify-center space-y-6 p-8 rounded-lg bg-card/50 backdrop-blur-md border border-primary/20 shadow-lg animate-scale-in">
-                  <div className="relative">
-                    <Loader2 className="w-16 h-16 animate-spin text-primary drop-shadow-[0_0_15px_rgba(var(--primary),0.5)]" />
-                    <div className="absolute inset-0 w-16 h-16 animate-ping rounded-full bg-primary/20" />
-                  </div>
-                  <div className="text-center space-y-2">
-                    <p className="text-xl font-semibold text-foreground">
-                      Analyzing your food… please wait 🍲
-                    </p>
-                    <p className="text-sm text-muted-foreground max-w-xs">
-                      Our AI is identifying the food and gathering nutrition information
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         ) : (
           <>
