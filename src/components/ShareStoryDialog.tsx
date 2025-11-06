@@ -204,6 +204,135 @@ const ShareStoryDialog = ({ open, onOpenChange, nutritionData, imageUrl }: Share
     }
   };
 
+  // Helper: create story image as Blob and File
+  const createStoryBlobAndFile = async (): Promise<{ blob: Blob; file: File }> => {
+    const canvas = document.querySelector("canvas");
+    if (!canvas) throw new Error("Canvas not found");
+    const blob: Blob = await new Promise((resolve, reject) => {
+      canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Failed to generate image"))), "image/png");
+    });
+    const file = new File([blob], `foodyscan-${Date.now()}.png`, { type: "image/png" });
+    return { blob, file };
+  };
+
+  // Helper: upload story image to storage and return public URL
+  const uploadStoryImage = async (blob: Blob): Promise<string> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("User not authenticated");
+    const path = `${user.id}/stories/${Date.now()}.png`;
+    const { error: uploadError } = await supabase.storage
+      .from("food-images")
+      .upload(path, blob, { contentType: "image/png" });
+    if (uploadError) throw uploadError;
+    const { data } = supabase.storage.from("food-images").getPublicUrl(path);
+    return data.publicUrl;
+  };
+
+  // Helper: Web Share API with files
+  const shareViaWebShare = async (file: File) => {
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ title: `${nutritionData.foodName} - FoodyScan`, text: caption, files: [file] });
+      return true;
+    }
+    return false;
+  };
+
+  // Social handlers
+  const handleShareInstagram = async () => {
+    try {
+      setIsSharing(true);
+      const { blob, file } = await createStoryBlobAndFile();
+      const didShare = await shareViaWebShare(file);
+      const publicUrl = await uploadStoryImage(blob);
+      await saveStoryToDatabase(publicUrl);
+      if (didShare) {
+        toast.success("Shared to Instagram via system share sheet");
+        onOpenChange(false);
+      } else {
+        // Fallback: download so user can upload to Instagram manually
+        const a = document.createElement("a");
+        a.href = publicUrl;
+        a.download = `foodyscan-story-${Date.now()}.png`;
+        a.click();
+        toast.message("Story saved. Open Instagram to post your image.");
+      }
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e.message || "Unable to share to Instagram");
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
+  const handleShareWhatsApp = async () => {
+    try {
+      setIsSharing(true);
+      const { blob } = await createStoryBlobAndFile();
+      const publicUrl = await uploadStoryImage(blob);
+      await saveStoryToDatabase(publicUrl);
+      const text = `${caption}\n${publicUrl}`;
+      // Try direct app deep link first
+      const waDeepLink = `whatsapp://send?text=${encodeURIComponent(text)}`;
+      // Fallback to web share URL
+      const waWebLink = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+      // Attempt deep link
+      window.location.href = waDeepLink;
+      // Also open fallback shortly after in case deep link fails (desktop/no app)
+      setTimeout(() => window.open(waWebLink, "_blank"), 800);
+      toast.success("Opening WhatsApp…");
+      onOpenChange(false);
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e.message || "Unable to share to WhatsApp");
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
+  const handleShareFacebook = async () => {
+    try {
+      setIsSharing(true);
+      const { blob } = await createStoryBlobAndFile();
+      const publicUrl = await uploadStoryImage(blob);
+      await saveStoryToDatabase(publicUrl);
+      const fbUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(publicUrl)}`;
+      window.open(fbUrl, "_blank");
+      toast.success("Opening Facebook…");
+      onOpenChange(false);
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e.message || "Unable to share to Facebook");
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
+  const handleShareSnapchat = async () => {
+    try {
+      setIsSharing(true);
+      const { blob, file } = await createStoryBlobAndFile();
+      const didShare = await shareViaWebShare(file);
+      const publicUrl = await uploadStoryImage(blob);
+      await saveStoryToDatabase(publicUrl);
+      if (didShare) {
+        toast.success("Shared via system sheet (choose Snapchat)");
+        onOpenChange(false);
+      } else {
+        // No public share URL for direct Snapchat posting; provide download
+        const a = document.createElement("a");
+        a.href = publicUrl;
+        a.download = `foodyscan-story-${Date.now()}.png`;
+        a.click();
+        toast.message("Story saved. Open Snapchat to post your image.");
+      }
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e.message || "Unable to share to Snapchat");
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -257,6 +386,25 @@ const ShareStoryDialog = ({ open, onOpenChange, nutritionData, imageUrl }: Share
             <p className="text-xs text-muted-foreground mt-1">
               {caption.length}/150 characters
             </p>
+          </div>
+
+          {/* Quick Social Share */}
+          <div className="space-y-3">
+            <Label className="mb-1 block">Quick share</Label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <Button onClick={handleShareInstagram} disabled={isSharing || isSaving} variant="outline" size="lg">
+                Instagram
+              </Button>
+              <Button onClick={handleShareSnapchat} disabled={isSharing || isSaving} variant="outline" size="lg">
+                Snapchat
+              </Button>
+              <Button onClick={handleShareWhatsApp} disabled={isSharing || isSaving} variant="outline" size="lg">
+                WhatsApp
+              </Button>
+              <Button onClick={handleShareFacebook} disabled={isSharing || isSaving} variant="outline" size="lg">
+                Facebook
+              </Button>
+            </div>
           </div>
 
           {/* Action Buttons */}
