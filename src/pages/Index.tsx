@@ -60,75 +60,88 @@ const Index = () => {
     
     try {
       const reader = new FileReader();
-      reader.readAsDataURL(file);
-      
+
       reader.onloadend = async () => {
-        const base64Image = reader.result as string;
-        
-        const { data, error } = await supabase.functions.invoke("analyze-food", {
-          body: { image: base64Image },
-        });
+        try {
+          const base64Image = reader.result as string;
+          
+          const { data, error } = await supabase.functions.invoke("analyze-food", {
+            body: { image: base64Image },
+          });
 
-        if (error) throw error;
+          if (error) throw error;
 
-        // Upload image to storage
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${user.id}/${Date.now()}.${fileExt}`;
-        
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('food-images')
-          .upload(fileName, file);
+          // Upload image to storage
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+          
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('food-images')
+            .upload(fileName, file);
 
-        if (uploadError) {
-          console.error("Storage error:", uploadError);
-        }
+          if (uploadError) {
+            console.error("Storage error:", uploadError);
+          }
 
-        const imageUrl = uploadData 
-          ? supabase.storage.from('food-images').getPublicUrl(fileName).data.publicUrl
-          : null;
+          const imageUrl = uploadData 
+            ? supabase.storage.from('food-images').getPublicUrl(fileName).data.publicUrl
+            : null;
 
-        // Store image URL for sharing
-        if (imageUrl) {
-          setUploadedImageUrl(imageUrl);
-        }
+          // Store image URL for sharing
+          if (imageUrl) {
+            setUploadedImageUrl(imageUrl);
+          }
 
-        // Save to database
-        const { error: dbError } = await supabase
-          .from('scan_history')
-          .insert({
-            user_id: user.id,
-            food_name: data.foodName,
+          // Save to database
+          const { error: dbError } = await supabase
+            .from('scan_history')
+            .insert({
+              user_id: user.id,
+              food_name: data.foodName,
+              calories: data.calories,
+              protein: data.protein,
+              fat: data.fat,
+              carbs: data.carbs,
+              health_tip: data.healthTip,
+              image_url: imageUrl,
+            });
+
+          if (dbError) {
+            console.error("Database error:", dbError);
+          }
+
+          setNutritionData({
+            foodName: data.foodName,
             calories: data.calories,
             protein: data.protein,
             fat: data.fat,
             carbs: data.carbs,
-            health_tip: data.healthTip,
-            image_url: imageUrl,
+            fiber: data.fiber || 0,
+            healthTip: data.healthTip,
+            quickAdvice: data.quickAdvice || "",
+            items: data.items || [],
+            isMultiItem: data.isMultiItem || false,
           });
 
-        if (dbError) {
-          console.error("Database error:", dbError);
+          toast.success("Food analyzed and saved!");
+        } catch (error: any) {
+          console.error("Error analyzing food:", error);
+          toast.error(error.message || "Failed to analyze food. Please try again.");
+        } finally {
+          setIsAnalyzing(false);
         }
-
-        setNutritionData({
-          foodName: data.foodName,
-          calories: data.calories,
-          protein: data.protein,
-          fat: data.fat,
-          carbs: data.carbs,
-          fiber: data.fiber || 0,
-          healthTip: data.healthTip,
-          quickAdvice: data.quickAdvice || "",
-          items: data.items || [],
-          isMultiItem: data.isMultiItem || false,
-        });
-
-        toast.success("Food analyzed and saved!");
       };
+
+      reader.onerror = () => {
+        console.error("FileReader error");
+        toast.error("Failed to read image file. Please try again.");
+        setIsAnalyzing(false);
+      };
+
+      reader.readAsDataURL(file);
     } catch (error: any) {
-      console.error("Error analyzing food:", error);
-      toast.error(error.message || "Failed to analyze food. Please try again.");
-    } finally {
+      console.error("Error preparing analysis:", error);
+      toast.error(error.message || "Failed to start analysis.");
       setIsAnalyzing(false);
     }
   };
