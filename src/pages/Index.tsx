@@ -191,14 +191,21 @@ const Index = () => {
             </div>
             
             {isAnalyzing && (
-              <div className="flex flex-col items-center justify-center py-12 space-y-4">
-                <Loader2 className="w-12 h-12 animate-spin text-primary" />
-                <p className="text-lg text-foreground font-medium">
-                  Analyzing your food...
-                </p>
-                <p className="text-sm text-muted-foreground text-center max-w-md">
-                  Our AI is identifying the food and gathering nutrition information
-                </p>
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm animate-fade-in">
+                <div className="flex flex-col items-center justify-center space-y-6 p-8 rounded-lg bg-card/50 backdrop-blur-md border border-primary/20 shadow-lg animate-scale-in">
+                  <div className="relative">
+                    <Loader2 className="w-16 h-16 animate-spin text-primary drop-shadow-[0_0_15px_rgba(var(--primary),0.5)]" />
+                    <div className="absolute inset-0 w-16 h-16 animate-ping rounded-full bg-primary/20" />
+                  </div>
+                  <div className="text-center space-y-2">
+                    <p className="text-xl font-semibold text-foreground">
+                      Analyzing your food… please wait 🍲
+                    </p>
+                    <p className="text-sm text-muted-foreground max-w-xs">
+                      Our AI is identifying the food and gathering nutrition information
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
           </div>
