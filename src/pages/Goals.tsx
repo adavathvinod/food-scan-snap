@@ -168,6 +168,8 @@ const Goals = () => {
         .upsert({
           user_id: user.id,
           ...goals,
+        }, {
+          onConflict: 'user_id'
         });
 
       if (error) throw error;
