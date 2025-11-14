@@ -46,6 +46,11 @@ const AdminLogin = () => {
 
       if (authError) throw authError;
 
+      console.log("User logged in:", authData.user.email);
+
+      // Wait a moment for the session to be established
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       // Check if user has admin role
       const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
@@ -53,6 +58,8 @@ const AdminLogin = () => {
         .eq('user_id', authData.user.id)
         .eq('role', 'admin')
         .single();
+
+      console.log("Role check result:", roleData, roleError);
 
       if (roleError || !roleData) {
         await supabase.auth.signOut();
@@ -62,8 +69,13 @@ const AdminLogin = () => {
       }
 
       toast.success("Admin login successful!");
-      navigate('/admin/dashboard');
+      
+      // Force navigation after a short delay
+      setTimeout(() => {
+        navigate('/admin/dashboard');
+      }, 300);
     } catch (error: any) {
+      console.error("Login error:", error);
       toast.error(error.message || "Login failed");
     } finally {
       setLoading(false);
