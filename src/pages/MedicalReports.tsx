@@ -65,46 +65,52 @@ const MedicalReports = () => {
       reader.readAsDataURL(file);
       
       reader.onloadend = async () => {
-        const base64Image = reader.result as string;
-        
-        const { data, error } = await supabase.functions.invoke("analyze-medical-report", {
-          body: { image: base64Image, reportType: "general" },
-        });
-
-        if (error) throw error;
-
-        // Upload image to storage
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${user.id}/${Date.now()}.${fileExt}`;
-        
-        const { data: uploadData } = await supabase.storage
-          .from('medical-reports')
-          .upload(fileName, file);
-
-        const imageUrl = uploadData 
-          ? supabase.storage.from('medical-reports').getPublicUrl(fileName).data.publicUrl
-          : null;
-
-        // Save to database
-        const { error: dbError } = await supabase
-          .from('medical_reports')
-          .insert({
-            user_id: user.id,
-            report_type: data.reportType,
-            extracted_data: data.extracted,
-            recommendations: JSON.stringify(data.recommendations),
-            image_url: imageUrl,
+        try {
+          const base64Image = reader.result as string;
+          
+          const { data, error } = await supabase.functions.invoke("analyze-medical-report", {
+            body: { image: base64Image, reportType: "general" },
           });
 
-        if (dbError) throw dbError;
+          if (error) throw error;
 
-        toast.success("Medical report analyzed successfully!");
-        loadReports();
+          // Upload image to storage
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+          
+          const { data: uploadData } = await supabase.storage
+            .from('medical-reports')
+            .upload(fileName, file);
+
+          const imageUrl = uploadData 
+            ? supabase.storage.from('medical-reports').getPublicUrl(fileName).data.publicUrl
+            : null;
+
+          // Save to database
+          const { error: dbError } = await supabase
+            .from('medical_reports')
+            .insert({
+              user_id: user.id,
+              report_type: data.reportType,
+              extracted_data: data.extracted,
+              recommendations: JSON.stringify(data.recommendations),
+              image_url: imageUrl,
+            });
+
+          if (dbError) throw dbError;
+
+          toast.success("Medical report analyzed successfully!");
+          loadReports();
+        } catch (error: any) {
+          console.error("Error analyzing report:", error);
+          toast.error(error.message || "Failed to analyze report");
+        } finally {
+          setAnalyzing(false);
+        }
       };
     } catch (error: any) {
-      console.error("Error analyzing report:", error);
-      toast.error(error.message || "Failed to analyze report");
-    } finally {
+      console.error("Error reading file:", error);
+      toast.error("Failed to read file");
       setAnalyzing(false);
     }
   };
