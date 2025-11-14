@@ -38,6 +38,42 @@ export type Database = {
         }
         Relationships: []
       }
+      enterprise_inquiries: {
+        Row: {
+          contact_person: string
+          created_at: string
+          email: string
+          id: string
+          message: string
+          organization_name: string
+          phone: string | null
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          contact_person: string
+          created_at?: string
+          email: string
+          id?: string
+          message: string
+          organization_name: string
+          phone?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          contact_person?: string
+          created_at?: string
+          email?: string
+          id?: string
+          message?: string
+          organization_name?: string
+          phone?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       food_stories: {
         Row: {
           calories: number
@@ -277,6 +313,42 @@ export type Database = {
           },
         ]
       }
+      subscription_plans: {
+        Row: {
+          created_at: string
+          duration_days: number
+          features: Json
+          id: string
+          is_active: boolean
+          name: string
+          plan_type: Database["public"]["Enums"]["subscription_plan_type"]
+          price: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          duration_days: number
+          features: Json
+          id?: string
+          is_active?: boolean
+          name: string
+          plan_type: Database["public"]["Enums"]["subscription_plan_type"]
+          price: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          duration_days?: number
+          features?: Json
+          id?: string
+          is_active?: boolean
+          name?: string
+          plan_type?: Database["public"]["Enums"]["subscription_plan_type"]
+          price?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_goals: {
         Row: {
           created_at: string
@@ -321,19 +393,76 @@ export type Database = {
       user_settings: {
         Row: {
           created_at: string
+          show_share_icons: boolean
           show_watermark: boolean
           updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
+          show_share_icons?: boolean
           show_watermark?: boolean
           updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
+          show_share_icons?: boolean
           show_watermark?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_subscriptions: {
+        Row: {
+          amount: number
+          auto_renew: boolean
+          created_at: string
+          currency: string
+          expiry_date: string
+          id: string
+          payment_id: string | null
+          plan_type: Database["public"]["Enums"]["subscription_plan_type"]
+          razorpay_order_id: string | null
+          razorpay_payment_id: string | null
+          razorpay_signature: string | null
+          start_date: string
+          status: Database["public"]["Enums"]["subscription_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          auto_renew?: boolean
+          created_at?: string
+          currency?: string
+          expiry_date: string
+          id?: string
+          payment_id?: string | null
+          plan_type: Database["public"]["Enums"]["subscription_plan_type"]
+          razorpay_order_id?: string | null
+          razorpay_payment_id?: string | null
+          razorpay_signature?: string | null
+          start_date?: string
+          status?: Database["public"]["Enums"]["subscription_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          auto_renew?: boolean
+          created_at?: string
+          currency?: string
+          expiry_date?: string
+          id?: string
+          payment_id?: string | null
+          plan_type?: Database["public"]["Enums"]["subscription_plan_type"]
+          razorpay_order_id?: string | null
+          razorpay_payment_id?: string | null
+          razorpay_signature?: string | null
+          start_date?: string
+          status?: Database["public"]["Enums"]["subscription_status"]
           updated_at?: string
           user_id?: string
         }
@@ -371,7 +500,8 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      subscription_plan_type: "free" | "monthly" | "annual" | "enterprise"
+      subscription_status: "active" | "expired" | "cancelled" | "trial"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -498,6 +628,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      subscription_plan_type: ["free", "monthly", "annual", "enterprise"],
+      subscription_status: ["active", "expired", "cancelled", "trial"],
+    },
   },
 } as const
