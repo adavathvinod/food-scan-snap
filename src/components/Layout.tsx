@@ -1,6 +1,6 @@
 import { ReactNode, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Camera, History, Target, User, MoreHorizontal, FileText, MessageCircle, Heart, Settings, ImagePlus } from "lucide-react";
+import { Camera, History, Target, User, MoreHorizontal, FileText, MessageCircle, Heart, Settings, ImagePlus, Crown } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 interface LayoutProps {
@@ -19,6 +19,7 @@ const Layout = ({ children }: LayoutProps) => {
   ];
 
   const moreItems = [
+    { path: "/pricing", icon: Crown, label: "Pricing" },
     { path: "/stories", icon: ImagePlus, label: "Story Gallery" },
     { path: "/reports", icon: FileText, label: "Medical Reports" },
     { path: "/chat", icon: MessageCircle, label: "AI Chat" },
