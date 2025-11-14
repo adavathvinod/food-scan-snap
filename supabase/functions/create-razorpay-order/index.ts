@@ -50,7 +50,7 @@ serve(async (req) => {
     const orderData = {
       amount: Math.round(plan.price * 100), // Convert to paise
       currency: 'INR',
-      receipt: `receipt_${user.id}_${Date.now()}`,
+      receipt: `ord_${Date.now()}`, // Keep under 40 chars
       notes: {
         user_id: user.id,
         plan_type: planType,
