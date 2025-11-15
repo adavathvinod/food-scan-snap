@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Loader2, Bell, Globe, ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
+import { TranslatedText } from "@/components/TranslatedText";
 
 const languages = [
   { code: "en", name: "English" },
@@ -91,7 +92,12 @@ const Settings = () => {
       if (error) throw error;
       
       setLanguage(newLang);
-      toast.success("Language preference saved");
+      toast.success("Language updated! The entire app will now translate to your selected language.");
+      
+      // Reload page after a short delay to apply translations
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
     } catch (error) {
       console.error("Error saving language:", error);
       toast.error("Failed to save language preference");
@@ -179,12 +185,12 @@ const Settings = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Globe className="w-5 h-5 text-primary" />
-                Language
+                <TranslatedText text="Language" />
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                <Label>Preferred Language</Label>
+                <Label><TranslatedText text="Preferred Language" /></Label>
                 <Select value={language} onValueChange={saveLanguage}>
                   <SelectTrigger>
                     <SelectValue />
@@ -198,7 +204,7 @@ const Settings = () => {
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  AI responses will be translated to your preferred language
+                  <TranslatedText text="The entire application including all pages, buttons, labels, and AI responses will be translated to your preferred language. The app will reload to apply changes." />
                 </p>
               </div>
             </CardContent>
@@ -209,15 +215,15 @@ const Settings = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Bell className="w-5 h-5 text-primary" />
-                Notifications
+                <TranslatedText text="Notifications" />
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label>Meal Reminders</Label>
+                  <Label><TranslatedText text="Meal Reminders" /></Label>
                   <p className="text-sm text-muted-foreground">
-                    Get notified based on your meal schedule
+                    <TranslatedText text="Get notified based on your meal schedule" />
                   </p>
                 </div>
                 <Switch
@@ -233,15 +239,15 @@ const Settings = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <ShoppingBag className="w-5 h-5 text-primary" />
-                Smart Recommendations
+                <TranslatedText text="Smart Recommendations" />
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label>Show Food Recommendations</Label>
+                  <Label><TranslatedText text="Show Food Recommendations" /></Label>
                   <p className="text-sm text-muted-foreground">
-                    Display "You May Also Like" suggestions after scans
+                    <TranslatedText text="Display suggested food items after scans" />
                   </p>
                 </div>
                 <Switch

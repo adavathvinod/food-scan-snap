@@ -9,10 +9,67 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { text, targetLanguage } = await req.json();
+    const { text, texts, targetLanguage, batch } = await req.json();
 
-    if (!text || !targetLanguage) {
-      throw new Error("Text and target language are required");
+    if ((!text && !texts) || !targetLanguage) {
+      throw new Error("Text/texts and target language are required");
+    }
+
+    // Handle batch translation
+    if (batch && texts && Array.isArray(texts)) {
+      const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+      if (!LOVABLE_API_KEY) {
+        throw new Error("API key not configured");
+      }
+
+      const languageNames: Record<string, string> = {
+        'en': 'English',
+        'te': 'Telugu',
+        'hi': 'Hindi',
+        'ta': 'Tamil',
+        'kn': 'Kannada',
+        'ml': 'Malayalam',
+        'bn': 'Bengali',
+        'mr': 'Marathi',
+        'gu': 'Gujarati',
+        'pa': 'Punjabi'
+      };
+
+      const targetLangName = languageNames[targetLanguage] || targetLanguage;
+      
+      // Join all texts with a separator and translate at once
+      const combinedText = texts.join('\n---SEPARATOR---\n');
+
+      const translateResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            {
+              role: "user",
+              content: `Translate the following texts to ${targetLangName}. Maintain the tone and meaning. Keep the separator '---SEPARATOR---' as is. Only return the translated texts separated by ---SEPARATOR---, nothing else.
+
+Texts: ${combinedText}`
+            }
+          ]
+        })
+      });
+
+      if (!translateResponse.ok) {
+        throw new Error("Failed to translate texts");
+      }
+
+      const translateData = await translateResponse.json();
+      const translatedCombined = translateData.choices[0]?.message?.content?.trim() || combinedText;
+      const translatedTexts = translatedCombined.split('---SEPARATOR---').map((t: string) => t.trim());
+
+      return new Response(JSON.stringify({ translatedTexts }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");

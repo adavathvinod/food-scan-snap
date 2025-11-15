@@ -1,7 +1,8 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Camera, History, Target, User, MoreHorizontal, FileText, MessageCircle, Heart, Settings, ImagePlus, Crown, Shield, RefreshCw, Info, AlertTriangle } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { useTranslatedText } from "@/hooks/useTranslation";
 
 interface LayoutProps {
   children: ReactNode;
@@ -31,60 +32,73 @@ const Layout = ({ children }: LayoutProps) => {
     { path: "/refund-policy", icon: RefreshCw, label: "Refund Policy" },
   ];
 
+  const NavItem = ({ path, icon: Icon, label }: { path: string; icon: any; label: string }) => {
+    const isActive = location.pathname === path;
+    const translatedLabel = useTranslatedText(label);
+    
+    return (
+      <Link
+        to={path}
+        className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${
+          isActive
+            ? "text-primary"
+            : "text-muted-foreground hover:text-foreground"
+        }`}
+      >
+        <Icon className="w-5 h-5 mb-1" />
+        <span className="text-xs font-medium">{translatedLabel}</span>
+      </Link>
+    );
+  };
+
+  const MoreItem = ({ path, icon: Icon, label }: { path: string; icon: any; label: string }) => {
+    const isActive = location.pathname === path;
+    const translatedLabel = useTranslatedText(label);
+    
+    return (
+      <Link
+        to={path}
+        onClick={() => setSheetOpen(false)}
+        className={`flex flex-col items-center justify-center p-6 rounded-lg border transition-colors ${
+          isActive
+            ? "bg-primary/10 border-primary text-primary"
+            : "bg-card border-border hover:bg-muted"
+        }`}
+      >
+        <Icon className="w-8 h-8 mb-2" />
+        <span className="text-sm font-medium text-center">{translatedLabel}</span>
+      </Link>
+    );
+  };
+
+  const sheetTitle = useTranslatedText("More Features");
+  const moreLabel = useTranslatedText("More");
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-secondary pb-20">
       {children}
       
       <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border">
         <div className="flex justify-around items-center h-16 max-w-lg mx-auto">
-          {primaryNavItems.map(({ path, icon: Icon, label }) => {
-            const isActive = location.pathname === path;
-            return (
-              <Link
-                key={path}
-                to={path}
-                className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${
-                  isActive
-                    ? "text-primary"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <Icon className="w-5 h-5 mb-1" />
-                <span className="text-xs font-medium">{label}</span>
-              </Link>
-            );
-          })}
+          {primaryNavItems.map((item) => (
+            <NavItem key={item.path} {...item} />
+          ))}
           
           <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
             <SheetTrigger asChild>
               <button className="flex flex-col items-center justify-center flex-1 h-full transition-colors text-muted-foreground hover:text-foreground">
                 <MoreHorizontal className="w-5 h-5 mb-1" />
-                <span className="text-xs font-medium">More</span>
+                <span className="text-xs font-medium">{moreLabel}</span>
               </button>
             </SheetTrigger>
             <SheetContent side="bottom" className="h-auto">
               <SheetHeader>
-                <SheetTitle>More Features</SheetTitle>
+                <SheetTitle>{sheetTitle}</SheetTitle>
               </SheetHeader>
               <div className="grid grid-cols-2 gap-4 mt-6 mb-4">
-                {moreItems.map(({ path, icon: Icon, label }) => {
-                  const isActive = location.pathname === path;
-                  return (
-                    <Link
-                      key={path}
-                      to={path}
-                      onClick={() => setSheetOpen(false)}
-                      className={`flex flex-col items-center justify-center p-6 rounded-lg border transition-colors ${
-                        isActive
-                          ? "bg-primary/10 border-primary text-primary"
-                          : "bg-card border-border hover:bg-muted"
-                      }`}
-                    >
-                      <Icon className="w-8 h-8 mb-2" />
-                      <span className="text-sm font-medium text-center">{label}</span>
-                    </Link>
-                  );
-                })}
+                {moreItems.map((item) => (
+                  <MoreItem key={item.path} {...item} />
+                ))}
               </div>
             </SheetContent>
           </Sheet>
