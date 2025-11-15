@@ -17,6 +17,8 @@ import Pricing from "./pages/Pricing";
 import EnterpriseContact from "./pages/EnterpriseContact";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import RefundPolicy from "./pages/RefundPolicy";
+import AboutUs from "./pages/AboutUs";
+import Disclaimer from "./pages/Disclaimer";
 import NotFound from "./pages/NotFound";
 import AdminLogin from "./pages/admin/AdminLogin";
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -49,6 +51,8 @@ const App = () => (
           <Route path="/enterprise-contact" element={<EnterpriseContact />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/refund-policy" element={<RefundPolicy />} />
+          <Route path="/about-us" element={<AboutUs />} />
+          <Route path="/disclaimer" element={<Disclaimer />} />
           
           {/* Admin Routes */}
           <Route path="/admin/login" element={<AdminLogin />} />

@@ -1,6 +1,6 @@
 import { ReactNode, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Camera, History, Target, User, MoreHorizontal, FileText, MessageCircle, Heart, Settings, ImagePlus, Crown, Shield, RefreshCw } from "lucide-react";
+import { Camera, History, Target, User, MoreHorizontal, FileText, MessageCircle, Heart, Settings, ImagePlus, Crown, Shield, RefreshCw, Info, AlertTriangle } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 interface LayoutProps {
@@ -25,6 +25,8 @@ const Layout = ({ children }: LayoutProps) => {
     { path: "/chat", icon: MessageCircle, label: "AI Chat" },
     { path: "/advice", icon: Heart, label: "Health Advice" },
     { path: "/settings", icon: Settings, label: "Settings" },
+    { path: "/about-us", icon: Info, label: "About Us" },
+    { path: "/disclaimer", icon: AlertTriangle, label: "Disclaimer" },
     { path: "/privacy-policy", icon: Shield, label: "Privacy Policy" },
     { path: "/refund-policy", icon: RefreshCw, label: "Refund Policy" },
   ];
