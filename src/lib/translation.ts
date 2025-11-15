@@ -47,10 +47,32 @@ export const translateMultipleTexts = async (
   targetLanguage?: string
 ): Promise<string[]> => {
   try {
-    const translations = await Promise.all(
-      texts.map(text => translateText(text, targetLanguage))
-    );
-    return translations;
+    // Get user's language if not specified
+    let language = targetLanguage;
+    if (!language) {
+      language = await getUserLanguage();
+    }
+
+    // If already in English, return original texts
+    if (language === 'en') {
+      return texts;
+    }
+
+    // Batch translate all texts at once for efficiency
+    const { data, error } = await supabase.functions.invoke('translate-text', {
+      body: { 
+        texts, 
+        targetLanguage: language,
+        batch: true 
+      }
+    });
+
+    if (error) {
+      console.error('Batch translation error:', error);
+      return texts;
+    }
+
+    return data.translatedTexts || texts;
   } catch (error) {
     console.error('Batch translation error:', error);
     return texts;
