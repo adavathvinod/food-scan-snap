@@ -1,3 +1,4 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.47.10';
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
@@ -20,7 +21,29 @@ serve(async (req) => {
       });
     }
 
-    const { foodName, language = "en" } = await req.json();
+    const { foodName, language } = await req.json();
+
+    // Determine target language
+    let targetLanguage = language;
+    if (!targetLanguage) {
+      const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+      const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
+      if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+          global: { headers: { Authorization: authHeader } }
+        });
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("preferred_language")
+            .eq("id", user.id)
+            .maybeSingle();
+          targetLanguage = profile?.preferred_language || "en";
+        }
+      }
+      if (!targetLanguage) targetLanguage = "en";
+    }
 
     // Input validation
     if (!foodName || typeof foodName !== 'string') {
@@ -70,9 +93,8 @@ Return ONLY a valid JSON array with this exact structure (no markdown, no explan
   }
 ]`;
 
-    const userPrompt = `Suggest 4-5 food items that complement or pair well with: "${foodName}". 
+    const userPrompt = `Suggest 4-5 food items that complement or pair well with: "${foodName}".
 Think about what people typically order together on food delivery apps.
-Language for names and descriptions: ${language === "hi" ? "Hindi" : language === "te" ? "Telugu" : "English"}
 Return ONLY the JSON array, no other text.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -83,10 +105,11 @@ Return ONLY the JSON array, no other text.`;
       },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
-        ],
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "system", content: `Respond in ${targetLanguage}. Use the language's native script. Keep JSON keys in English; translate all text values.` },
+            { role: "user", content: userPrompt }
+          ],
         temperature: 0.7,
       }),
     });

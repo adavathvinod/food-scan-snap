@@ -1,3 +1,4 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.47.10';
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -18,7 +19,29 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { foodsToEat = [], foodsToAvoid = [], language = "en" } = await req.json();
+    const { foodsToEat = [], foodsToAvoid = [], language } = await req.json();
+
+    // Determine target language
+    let targetLanguage = language;
+    if (!targetLanguage) {
+      const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+      const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
+      if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+          global: { headers: { Authorization: authHeader } }
+        });
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("preferred_language")
+            .eq("id", user.id)
+            .maybeSingle();
+          targetLanguage = profile?.preferred_language || "en";
+        }
+      }
+      if (!targetLanguage) targetLanguage = "en";
+    }
 
     // Input validation
     if (!Array.isArray(foodsToEat) || !Array.isArray(foodsToAvoid)) {

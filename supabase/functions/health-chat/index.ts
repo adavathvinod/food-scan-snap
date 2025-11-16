@@ -130,7 +130,14 @@ Be friendly, concise, and encouraging.\n\n`;
     };
     messages.push(currentMessage);
 
-    console.log("Calling Gemini AI with context...");
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('preferred_language')
+      .eq('id', userId)
+      .maybeSingle();
+    const targetLanguage = profile?.preferred_language || 'en';
+
+    console.log("Calling Gemini AI with context and language:", targetLanguage);
 
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -140,7 +147,10 @@ Be friendly, concise, and encouraging.\n\n`;
       },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
-        messages: messages
+        messages: [
+          { role: "system", content: `Respond in ${targetLanguage}. Use the native script for the selected language. Keep JSON keys (if any) in English.` },
+          ...messages
+        ]
       })
     });
 
