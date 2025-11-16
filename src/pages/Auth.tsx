@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Utensils } from "lucide-react";
+import { Utensils, ShieldCheck } from "lucide-react";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -151,13 +151,27 @@ const Auth = () => {
           </form>
           <div className="mt-4 text-center space-y-2">
             {!isForgotPassword ? (
-              <button
-                type="button"
-                onClick={() => setIsLogin(!isLogin)}
-                className="text-sm text-muted-foreground hover:text-foreground"
-              >
-                {isLogin ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => setIsLogin(!isLogin)}
+                  className="text-sm text-muted-foreground hover:text-foreground"
+                >
+                  {isLogin ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
+                </button>
+                {isLogin && (
+                  <div className="pt-2 border-t border-border/50">
+                    <button
+                      type="button"
+                      onClick={() => navigate('/admin/login')}
+                      className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center gap-1.5 mx-auto"
+                    >
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                      Admin Access
+                    </button>
+                  </div>
+                )}
+              </>
             ) : (
               <button
                 type="button"
