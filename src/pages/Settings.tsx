@@ -15,15 +15,30 @@ import { TranslatedText } from "@/components/TranslatedText";
 
 const languages = [
   { code: "en", name: "English" },
-  { code: "te", name: "Telugu (తెలుగు)" },
+  { code: "es", name: "Spanish (Español)" },
+  { code: "ja", name: "Japanese (日本語)" },
+  { code: "de", name: "German (Deutsch)" },
+  { code: "fr", name: "French (Français)" },
+  { code: "it", name: "Italian (Italiano)" },
+  { code: "pt", name: "Portuguese (Português)" },
+  { code: "ru", name: "Russian (Русский)" },
+  { code: "zh", name: "Chinese (中文)" },
+  { code: "ko", name: "Korean (한국어)" },
+  { code: "ar", name: "Arabic (العربية)" },
   { code: "hi", name: "Hindi (हिंदी)" },
+  { code: "te", name: "Telugu (తెలుగు)" },
   { code: "ta", name: "Tamil (தமிழ்)" },
   { code: "kn", name: "Kannada (ಕನ್ನಡ)" },
   { code: "ml", name: "Malayalam (മലയാളം)" },
   { code: "bn", name: "Bengali (বাংলা)" },
   { code: "mr", name: "Marathi (मराठी)" },
   { code: "gu", name: "Gujarati (ગુજરાતી)" },
-  { code: "pa", name: "Punjabi (ਪੰਜਾਬੀ)" }
+  { code: "pa", name: "Punjabi (ਪੰਜਾਬੀ)" },
+  { code: "nl", name: "Dutch (Nederlands)" },
+  { code: "pl", name: "Polish (Polski)" },
+  { code: "tr", name: "Turkish (Türkçe)" },
+  { code: "vi", name: "Vietnamese (Tiếng Việt)" },
+  { code: "th", name: "Thai (ไทย)" }
 ];
 
 const Settings = () => {
