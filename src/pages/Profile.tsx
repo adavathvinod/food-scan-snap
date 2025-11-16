@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -30,7 +30,7 @@ const Profile = () => {
     loadProfile();
   }, []);
 
-  const loadProfile = async () => {
+  const loadProfile = useCallback(async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -65,9 +65,9 @@ const Profile = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const saveProfile = async () => {
+  const saveProfile = useCallback(async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -83,16 +83,16 @@ const Profile = () => {
     } catch (error: any) {
       toast.error("Failed to update profile");
     }
-  };
+  }, [profile.full_name]);
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     try {
       await supabase.auth.signOut();
       navigate("/auth");
     } catch (error: any) {
       toast.error("Failed to log out");
     }
-  };
+  }, [navigate]);
 
   if (loading) {
     return (
