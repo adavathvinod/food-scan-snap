@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import ImageUpload from "@/components/ImageUpload";
@@ -54,7 +54,7 @@ const Index = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  const analyzeFood = async (file: File) => {
+  const analyzeFood = useCallback(async (file: File) => {
     setIsAnalyzing(true);
     setSelectedFile(file);
     
@@ -144,15 +144,15 @@ const Index = () => {
       toast.error(error.message || "Failed to start analysis.");
       setIsAnalyzing(false);
     }
-  };
+  }, [user]);
 
-  const resetScan = () => {
+  const resetScan = useCallback(() => {
     setNutritionData(null);
     setSelectedFile(null);
     setUploadedImageUrl("");
-  };
+  }, []);
 
-  const handleShareStory = () => {
+  const handleShareStory = useCallback(() => {
     if (!nutritionData) {
       toast.error("Scan your food first to create your first Foody Story!");
       return;
@@ -164,7 +164,7 @@ const Index = () => {
     }
 
     setShareDialogOpen(true);
-  };
+  }, [nutritionData, uploadedImageUrl]);
 
   if (!user) {
     return (

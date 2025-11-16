@@ -1,4 +1,4 @@
-import { ReactNode, useState, useEffect } from "react";
+import { ReactNode, useState, memo } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Camera, History, Target, User, MoreHorizontal, FileText, MessageCircle, Heart, Settings, ImagePlus, Crown, Shield, RefreshCw, Info, AlertTriangle } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -32,7 +32,7 @@ const Layout = ({ children }: LayoutProps) => {
     { path: "/refund-policy", icon: RefreshCw, label: "Refund Policy" },
   ];
 
-  const NavItem = ({ path, icon: Icon, label }: { path: string; icon: any; label: string }) => {
+  const NavItem = memo(({ path, icon: Icon, label }: { path: string; icon: any; label: string }) => {
     const isActive = location.pathname === path;
     const translatedLabel = useTranslatedText(label);
     
@@ -49,9 +49,9 @@ const Layout = ({ children }: LayoutProps) => {
         <span className="text-xs font-medium">{translatedLabel}</span>
       </Link>
     );
-  };
+  });
 
-  const MoreItem = ({ path, icon: Icon, label }: { path: string; icon: any; label: string }) => {
+  const MoreItem = memo(({ path, icon: Icon, label }: { path: string; icon: any; label: string }) => {
     const isActive = location.pathname === path;
     const translatedLabel = useTranslatedText(label);
     
@@ -69,7 +69,7 @@ const Layout = ({ children }: LayoutProps) => {
         <span className="text-sm font-medium text-center">{translatedLabel}</span>
       </Link>
     );
-  };
+  });
 
   const sheetTitle = useTranslatedText("More Features");
   const moreLabel = useTranslatedText("More");

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, memo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Trash2 } from "lucide-react";
@@ -23,7 +23,7 @@ const History = () => {
   const [scans, setScans] = useState<ScanRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const loadHistory = async () => {
+  const loadHistory = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from("scan_history")
@@ -37,9 +37,9 @@ const History = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const deleteScan = async (id: string) => {
+  const deleteScan = useCallback(async (id: string) => {
     try {
       const { error } = await supabase
         .from("scan_history")
@@ -47,12 +47,12 @@ const History = () => {
         .eq("id", id);
 
       if (error) throw error;
-      setScans(scans.filter(scan => scan.id !== id));
+      setScans(prev => prev.filter(scan => scan.id !== id));
       toast.success("Scan deleted");
     } catch (error: any) {
       toast.error("Failed to delete scan");
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadHistory();
