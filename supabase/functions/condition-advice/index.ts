@@ -1,3 +1,4 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.47.10';
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -41,7 +42,26 @@ Deno.serve(async (req) => {
       throw new Error("API key not configured");
     }
 
-    console.log(`Getting advice for condition: ${condition}`);
+    // Determine user's preferred language
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+    const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
+    let targetLanguage = "en";
+    if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+      const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        global: { headers: { Authorization: authHeader } }
+      });
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("preferred_language")
+          .eq("id", user.id)
+          .maybeSingle();
+        targetLanguage = profile?.preferred_language || "en";
+      }
+    }
+
+    console.log(`Getting advice for condition: ${condition} (lang: ${targetLanguage})`);
 
     const adviceResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -52,6 +72,10 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
+          {
+            role: "system",
+            content: `Respond in ${targetLanguage}. Keep JSON keys in English, but translate all text values and sentences into the selected language.`
+          },
           {
             role: "user",
             content: `Provide dietary and lifestyle advice for someone experiencing: ${condition}
