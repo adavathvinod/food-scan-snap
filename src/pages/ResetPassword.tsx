@@ -21,39 +21,56 @@ const ResetPassword = () => {
 
   useEffect(() => {
     let mounted = true;
+    let validationTimeout: NodeJS.Timeout;
 
-    const checkRecoverySession = async () => {
-      console.log('ResetPassword: Checking for recovery session');
+    // Set up auth state listener to catch PASSWORD_RECOVERY event
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('ResetPassword: Auth event:', event, 'Session:', !!session);
       
-      // Check if there's an active session (recovery token was already processed)
+      if (!mounted) return;
+
+      if (event === 'PASSWORD_RECOVERY' && session) {
+        // Valid recovery link - show password reset form
+        console.log('ResetPassword: Valid recovery detected');
+        clearTimeout(validationTimeout);
+        setIsValidRecovery(true);
+        setCheckingRecovery(false);
+        setShowResendForm(false);
+      }
+    });
+
+    // Also check for existing session
+    const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!mounted) return;
       
-      console.log('ResetPassword: Session check result:', { hasSession: !!session });
+      console.log('ResetPassword: Initial session check:', !!session);
 
       if (session) {
-        console.log('ResetPassword: Valid recovery session found - showing form');
+        // There's a session, assume it's a recovery session
         setIsValidRecovery(true);
         setCheckingRecovery(false);
       } else {
-        // No session found, give it a moment for the recovery token to be processed
-        setTimeout(() => {
+        // No immediate session, wait a bit for recovery token to be processed
+        validationTimeout = setTimeout(() => {
           if (mounted) {
-            console.log('ResetPassword: No session after delay - showing resend form');
+            console.log('ResetPassword: No valid recovery session - showing resend form');
             setShowResendForm(true);
             setCheckingRecovery(false);
           }
-        }, 2000);
+        }, 3000);
       }
     };
 
-    checkRecoverySession();
+    checkSession();
 
     return () => {
       mounted = false;
+      clearTimeout(validationTimeout);
+      subscription.unsubscribe();
     };
-  }, [navigate]);
+  }, []);
 
   const handleResendLink = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -164,14 +181,15 @@ const ResetPassword = () => {
 
       if (error) throw error;
 
-      toast.success("Password updated successfully! Redirecting...");
+      toast.success("Password updated successfully! You can now log in.");
       
       // Sign out to ensure clean state
       await supabase.auth.signOut();
       
-      // Redirect to admin login
+      // Redirect to login - check if it was an admin based on referrer or default to user login
       setTimeout(() => {
-        navigate("/admin/login");
+        const wasAdmin = document.referrer.includes('/admin');
+        navigate(wasAdmin ? "/admin/login" : "/auth");
       }, 1500);
     } catch (error: any) {
       console.error('Password reset error:', error);
