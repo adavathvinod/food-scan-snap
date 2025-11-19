@@ -201,7 +201,7 @@ const Index = () => {
         {/* Header */}
         <header className="text-center mb-8">
           <h1 className="text-4xl md:text-5xl font-bold mb-2 text-foreground">
-            Food Scan Snap
+            FoodyScan
           </h1>
           <p className="text-muted-foreground">
             Capture or upload food images for instant nutrition insights

@@ -299,7 +299,7 @@ const Settings = () => {
           <Card className="border-primary/20 bg-primary/5">
             <CardContent className="p-4">
               <p className="text-sm text-foreground text-center">
-                Food Scan Snap - Your AI-powered nutrition companion
+                FoodyScan - Your AI-powered nutrition companion
               </p>
               <p className="text-xs text-muted-foreground text-center mt-1">
                 Version 1.0.0
