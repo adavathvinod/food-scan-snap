@@ -22,6 +22,12 @@ const ResetPassword = () => {
   useEffect(() => {
     let mounted = true;
     let validationTimeout: NodeJS.Timeout;
+    
+    // Check if URL contains recovery token (hash fragment)
+    const hasRecoveryToken = window.location.hash.includes('access_token') || 
+                            window.location.hash.includes('type=recovery');
+
+    console.log('ResetPassword: Has recovery token in URL:', hasRecoveryToken);
 
     // Set up auth state listener to catch PASSWORD_RECOVERY event
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -31,7 +37,14 @@ const ResetPassword = () => {
 
       if (event === 'PASSWORD_RECOVERY' && session) {
         // Valid recovery link - show password reset form
-        console.log('ResetPassword: Valid recovery detected');
+        console.log('ResetPassword: Valid recovery detected via event');
+        clearTimeout(validationTimeout);
+        setIsValidRecovery(true);
+        setCheckingRecovery(false);
+        setShowResendForm(false);
+      } else if (event === 'SIGNED_IN' && session && hasRecoveryToken) {
+        // Sometimes SIGNED_IN fires instead of PASSWORD_RECOVERY
+        console.log('ResetPassword: Valid recovery detected via SIGNED_IN');
         clearTimeout(validationTimeout);
         setIsValidRecovery(true);
         setCheckingRecovery(false);
@@ -39,27 +52,39 @@ const ResetPassword = () => {
       }
     });
 
-    // Also check for existing session
+    // Check for existing session after a brief delay to let Supabase process the URL
     const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      // If there's a recovery token, give Supabase more time to process it
+      const initialDelay = hasRecoveryToken ? 1000 : 500;
+      
+      await new Promise(resolve => setTimeout(resolve, initialDelay));
       
       if (!mounted) return;
+
+      const { data: { session } } = await supabase.auth.getSession();
       
-      console.log('ResetPassword: Initial session check:', !!session);
+      console.log('ResetPassword: Session check after delay:', !!session);
 
       if (session) {
-        // There's a session, assume it's a recovery session
+        // There's a session - show password reset form
+        console.log('ResetPassword: Valid recovery session found');
         setIsValidRecovery(true);
         setCheckingRecovery(false);
-      } else {
-        // No immediate session, wait a bit for recovery token to be processed
+      } else if (hasRecoveryToken) {
+        // Has token but no session yet, wait longer (token is still being processed)
+        console.log('ResetPassword: Token detected, waiting for processing...');
         validationTimeout = setTimeout(() => {
           if (mounted) {
-            console.log('ResetPassword: No valid recovery session - showing resend form');
+            console.log('ResetPassword: Token processing timeout - showing resend form');
             setShowResendForm(true);
             setCheckingRecovery(false);
           }
-        }, 3000);
+        }, 5000); // Wait 5 seconds for token processing
+      } else {
+        // No token and no session - show resend form quickly
+        console.log('ResetPassword: No token or session - showing resend form');
+        setShowResendForm(true);
+        setCheckingRecovery(false);
       }
     };
 
