@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,30 +12,58 @@ const ResetPassword = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isValidRecovery, setIsValidRecovery] = useState(false);
+  const [checkingRecovery, setCheckingRecovery] = useState(true);
   const navigate = useNavigate();
-  const location = useLocation();
 
   useEffect(() => {
-    // Check if we have a recovery token in the URL hash
-    const hashParams = new URLSearchParams(location.hash.substring(1));
-    const accessToken = hashParams.get('access_token');
-    const type = hashParams.get('type');
-    
-    console.log('Reset password page loaded:', { 
-      hasAccessToken: !!accessToken, 
-      type,
-      fullHash: location.hash 
+    let mounted = true;
+
+    console.log('ResetPassword: Component mounted, waiting for PASSWORD_RECOVERY event');
+
+    // Listen for the PASSWORD_RECOVERY auth state change event
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!mounted) return;
+      
+      console.log('ResetPassword: Auth event received:', event, 'Has session:', !!session);
+
+      if (event === 'PASSWORD_RECOVERY') {
+        console.log('ResetPassword: Valid PASSWORD_RECOVERY event - showing form');
+        setIsValidRecovery(true);
+        setCheckingRecovery(false);
+      }
     });
 
-    // If no recovery token after a brief delay, this is an invalid link
-    setTimeout(() => {
-      if (!accessToken || type !== 'recovery') {
-        console.log('No valid recovery token found - redirecting');
+    // Set a timeout - if PASSWORD_RECOVERY event doesn't fire within 5 seconds, it's invalid
+    const timeoutId = setTimeout(() => {
+      if (mounted && !isValidRecovery) {
+        console.log('ResetPassword: Timeout - no PASSWORD_RECOVERY event received');
         toast.error("Invalid or expired reset link. Please request a new one.");
         navigate("/admin/login");
       }
-    }, 1000);
-  }, [location, navigate]);
+    }, 5000);
+
+    return () => {
+      mounted = false;
+      clearTimeout(timeoutId);
+      subscription.unsubscribe();
+    };
+  }, [navigate, isValidRecovery]);
+
+  if (checkingRecovery) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6">
+            <div className="flex flex-col items-center gap-4">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <p className="text-center text-muted-foreground">Verifying your reset link...</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
