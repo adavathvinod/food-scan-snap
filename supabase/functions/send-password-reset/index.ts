@@ -59,8 +59,9 @@ const handler = async (req: Request): Promise<Response> => {
       }
     );
 
-    // Use Supabase's built-in password reset
-    const redirectUrl = `${Deno.env.get("SUPABASE_URL")?.replace(".supabase.co", ".lovableproject.com") || "https://8638b865-74d1-462d-a130-b794bea74571.lovableproject.com"}/reset-password`;
+    // Get the origin from the request or use production URL
+    const origin = req.headers.get('origin') || req.headers.get('referer')?.split('/').slice(0, 3).join('/') || 'https://food-scan-snap.lovable.app';
+    const redirectUrl = `${origin}/reset-password`;
     
     console.log("send-password-reset: Sending reset email via Supabase for:", email);
     console.log("send-password-reset: Redirect URL:", redirectUrl);
