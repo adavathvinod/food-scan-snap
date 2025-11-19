@@ -14,6 +14,9 @@ const ResetPassword = () => {
   const [loading, setLoading] = useState(false);
   const [isValidRecovery, setIsValidRecovery] = useState(false);
   const [checkingRecovery, setCheckingRecovery] = useState(true);
+  const [showResendForm, setShowResendForm] = useState(false);
+  const [resendEmail, setResendEmail] = useState("");
+  const [resendLoading, setResendLoading] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -37,9 +40,9 @@ const ResetPassword = () => {
         // No session found, give it a moment for the recovery token to be processed
         setTimeout(() => {
           if (mounted) {
-            console.log('ResetPassword: No session after delay - invalid link');
-            toast.error("Invalid or expired reset link. Please request a new one.");
-            navigate("/admin/login");
+            console.log('ResetPassword: No session after delay - showing resend form');
+            setShowResendForm(true);
+            setCheckingRecovery(false);
           }
         }, 2000);
       }
@@ -52,6 +55,34 @@ const ResetPassword = () => {
     };
   }, [navigate]);
 
+  const handleResendLink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!resendEmail) {
+      toast.error("Please enter your email address");
+      return;
+    }
+
+    setResendLoading(true);
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(resendEmail, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (error) throw error;
+
+      toast.success("Password reset link sent! Check your email.");
+      setTimeout(() => {
+        navigate("/admin/login");
+      }, 2000);
+    } catch (error: any) {
+      console.error('Resend reset link error:', error);
+      toast.error(error.message || "Failed to send reset link");
+      setResendLoading(false);
+    }
+  };
+
   if (checkingRecovery) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
@@ -61,6 +92,50 @@ const ResetPassword = () => {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               <p className="text-center text-muted-foreground">Verifying your reset link...</p>
             </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (showResendForm) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="mx-auto w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mb-4">
+              <ShieldCheck className="w-8 h-8 text-destructive" />
+            </div>
+            <CardTitle className="text-2xl">Link Expired</CardTitle>
+            <CardDescription>
+              This reset link is invalid or has expired. Enter your email to receive a new one.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleResendLink} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="resendEmail">Email Address</Label>
+                <Input
+                  id="resendEmail"
+                  type="email"
+                  placeholder="your@email.com"
+                  value={resendEmail}
+                  onChange={(e) => setResendEmail(e.target.value)}
+                  required
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={resendLoading}>
+                {resendLoading ? "Sending..." : "Send New Reset Link"}
+              </Button>
+              <Button 
+                type="button" 
+                variant="outline" 
+                className="w-full" 
+                onClick={() => navigate("/admin/login")}
+              >
+                Back to Login
+              </Button>
+            </form>
           </CardContent>
         </Card>
       </div>
