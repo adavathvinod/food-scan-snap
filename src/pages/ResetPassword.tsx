@@ -1,241 +1,225 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { ShieldCheck } from "lucide-react";
+import { Eye, EyeOff, Lock } from "lucide-react";
+import { AuthChangeEvent, Session } from "@supabase/supabase-js";
 
 const ResetPassword = () => {
-  const [searchParams] = useSearchParams();
-  const token = searchParams.get("token");
-  
+  const navigate = useNavigate();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [isValidToken, setIsValidToken] = useState(false);
-  const [checkingToken, setCheckingToken] = useState(true);
-  const [showResendForm, setShowResendForm] = useState(false);
-  const [resendEmail, setResendEmail] = useState("");
-  const [resendLoading, setResendLoading] = useState(false);
-  const [userEmail, setUserEmail] = useState("");
-  const navigate = useNavigate();
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isValidating, setIsValidating] = useState(true);
+  const [session, setSession] = useState<Session | null>(null);
 
   useEffect(() => {
-    const verifyToken = async () => {
-      if (!token) {
-        console.log('ResetPassword: No token in URL, showing resend form');
-        setShowResendForm(true);
-        setCheckingToken(false);
+    let mounted = true;
+
+    const initAuth = async () => {
+      console.log("Checking for recovery session");
+      
+      // Check for existing session
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      
+      if (currentSession && mounted) {
+        console.log("Valid session found:", currentSession);
+        setSession(currentSession);
+        setIsValidating(false);
         return;
       }
 
-      console.log('ResetPassword: Verifying token...');
-      
-      try {
-        const { data, error } = await supabase.functions.invoke('verify-reset-token', {
-          body: { token }
-        });
+      // Set up auth state listener
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(
+        (event: AuthChangeEvent, currentSession: Session | null) => {
+          console.log("Auth state changed:", event, currentSession);
+          
+          if (!mounted) return;
 
-        console.log('ResetPassword: Verification result:', data, error);
-
-        if (error) throw error;
-
-        if (data.valid) {
-          console.log('ResetPassword: Token is valid');
-          setIsValidToken(true);
-          setUserEmail(data.email);
-        } else {
-          console.log('ResetPassword: Token is invalid:', data.error);
-          toast.error(data.error || "Invalid or expired reset link");
-          setShowResendForm(true);
+          if (event === "PASSWORD_RECOVERY" && currentSession) {
+            console.log("Valid recovery session detected");
+            setSession(currentSession);
+            setIsValidating(false);
+          } else if (event === "SIGNED_IN" && currentSession) {
+            console.log("User signed in");
+            setSession(currentSession);
+            setIsValidating(false);
+          }
         }
-      } catch (error: any) {
-        console.error('ResetPassword: Error verifying token:', error);
-        toast.error("Invalid or expired reset link. Please request a new one.");
-        setShowResendForm(true);
-      } finally {
-        setCheckingToken(false);
-      }
+      );
+
+      // Give Supabase a moment to process the recovery link
+      setTimeout(() => {
+        if (mounted && !session) {
+          console.log("No valid session found after timeout");
+          setIsValidating(false);
+        }
+      }, 2000);
+
+      return () => {
+        subscription.unsubscribe();
+      };
     };
 
-    verifyToken();
-  }, [token]);
+    initAuth();
 
-  const handleResendLink = async (e: React.FormEvent) => {
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!resendEmail) {
-      toast.error("Please enter your email address");
-      return;
-    }
 
-    setResendLoading(true);
-
-    try {
-      const { data, error } = await supabase.functions.invoke('send-password-reset', {
-        body: { email: resendEmail }
-      });
-
-      if (error) throw error;
-
-      toast.success(data.message || "Password reset link sent! Check your email.");
-      setTimeout(() => {
-        navigate("/admin/login");
-      }, 2000);
-    } catch (error: any) {
-      console.error('Resend reset link error:', error);
-      toast.error(error.message || "Failed to send reset link");
-    } finally {
-      setResendLoading(false);
-    }
-  };
-
-  if (checkingToken) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
-        <Card className="w-full max-w-md">
-          <CardContent className="pt-6">
-            <div className="flex flex-col items-center gap-4">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-              <p className="text-center text-muted-foreground">Verifying your reset link...</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (showResendForm) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <div className="mx-auto w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mb-4">
-              <ShieldCheck className="w-8 h-8 text-destructive" />
-            </div>
-            <CardTitle className="text-2xl">Link Expired</CardTitle>
-            <CardDescription>
-              This reset link is invalid or has expired. Enter your email to receive a new one.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleResendLink} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="resendEmail">Email Address</Label>
-                <Input
-                  id="resendEmail"
-                  type="email"
-                  placeholder="your@email.com"
-                  value={resendEmail}
-                  onChange={(e) => setResendEmail(e.target.value)}
-                  required
-                />
-              </div>
-              <Button type="submit" className="w-full" disabled={resendLoading}>
-                {resendLoading ? "Sending..." : "Send New Reset Link"}
-              </Button>
-              <Button 
-                type="button" 
-                variant="outline" 
-                className="w-full" 
-                onClick={() => navigate("/admin/login")}
-              >
-                Back to Login
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  const handleResetPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
     if (password !== confirmPassword) {
       toast.error("Passwords do not match");
       return;
     }
 
     if (password.length < 6) {
-      toast.error("Password must be at least 6 characters");
+      toast.error("Password must be at least 6 characters long");
       return;
     }
 
-    setLoading(true);
+    if (!session) {
+      toast.error("Invalid or expired reset link. Please request a new one.");
+      return;
+    }
+
+    setIsLoading(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('reset-password-with-token', {
-        body: { token, password }
+      console.log("Updating password via Supabase");
+      const { error } = await supabase.auth.updateUser({
+        password: password,
       });
 
-      if (error) throw error;
-
-      if (!data.success) {
-        throw new Error(data.error || "Failed to reset password");
+      if (error) {
+        console.error("Reset error:", error);
+        toast.error(error.message || "Failed to reset password");
+        return;
       }
 
-      toast.success("Password updated successfully! You can now log in.");
+      toast.success("Password reset successfully!");
+      
+      // Sign out the user
+      await supabase.auth.signOut();
       
       setTimeout(() => {
-        // Redirect based on user type (check if email contains admin patterns)
-        const isAdmin = userEmail.includes('admin') || userEmail.includes('foodyscan');
-        navigate(isAdmin ? "/admin/login" : "/auth");
+        navigate("/auth");
       }, 1500);
     } catch (error: any) {
-      console.error('Password reset error:', error);
+      console.error("Reset error:", error);
       toast.error(error.message || "Failed to reset password");
-      setLoading(false);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-            <ShieldCheck className="w-8 h-8 text-primary" />
+  if (isValidating) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Validating reset link...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
+        <div className="w-full max-w-md space-y-8 bg-card p-8 rounded-2xl shadow-lg border">
+          <div className="text-center space-y-2">
+            <div className="mx-auto w-12 h-12 bg-destructive/10 rounded-full flex items-center justify-center mb-4">
+              <Lock className="h-6 w-6 text-destructive" />
+            </div>
+            <h1 className="text-2xl font-bold">Link Expired</h1>
+            <p className="text-muted-foreground">
+              This password reset link has expired or is invalid. Please request a new one.
+            </p>
           </div>
-          <CardTitle className="text-2xl">Reset Password</CardTitle>
-          <CardDescription>
+          <Button
+            onClick={() => navigate("/auth")}
+            className="w-full"
+          >
+            Back to Login
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
+      <div className="w-full max-w-md space-y-8 bg-card p-8 rounded-2xl shadow-lg border">
+        <div className="text-center space-y-2">
+          <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+            <Lock className="h-6 w-6 text-primary" />
+          </div>
+          <h1 className="text-3xl font-bold">Reset Password</h1>
+          <p className="text-muted-foreground">
             Enter your new password below
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleResetPassword} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="password">New Password</Label>
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">New Password</label>
+            <div className="relative">
               <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
+                type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter new password"
                 required
-                minLength={6}
+                className="pr-10"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Confirm Password</label>
+            <div className="relative">
               <Input
-                id="confirmPassword"
-                type="password"
-                placeholder="••••••••"
+                type={showConfirmPassword ? "text" : "password"}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm new password"
                 required
-                minLength={6}
+                className="pr-10"
               />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
             </div>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Updating..." : "Reset Password"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+          </div>
+
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={isLoading}
+          >
+            {isLoading ? "Resetting..." : "Reset Password"}
+          </Button>
+        </form>
+      </div>
     </div>
   );
 };
