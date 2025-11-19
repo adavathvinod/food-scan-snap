@@ -20,3 +20,12 @@ verify_jwt = true
 
 [functions.parse-meal-schedule]
 verify_jwt = true
+
+[functions.send-password-reset]
+verify_jwt = false
+
+[functions.verify-reset-token]
+verify_jwt = false
+
+[functions.reset-password-with-token]
+verify_jwt = false
