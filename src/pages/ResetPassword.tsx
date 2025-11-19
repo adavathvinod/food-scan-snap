@@ -21,78 +21,73 @@ const ResetPassword = () => {
 
   useEffect(() => {
     let mounted = true;
-    let validationTimeout: NodeJS.Timeout;
-    
-    // Check if URL contains recovery token (hash fragment)
-    const hasRecoveryToken = window.location.hash.includes('access_token') || 
-                            window.location.hash.includes('type=recovery');
+    let sessionCheckTimeout: NodeJS.Timeout;
+    let finalValidationTimeout: NodeJS.Timeout;
 
-    console.log('ResetPassword: Has recovery token in URL:', hasRecoveryToken);
+    console.log('ResetPassword: Component mounted, URL:', window.location.href);
 
-    // Set up auth state listener to catch PASSWORD_RECOVERY event
+    // Set up auth state listener FIRST - this is critical
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('ResetPassword: Auth event:', event, 'Session:', !!session);
+      console.log('ResetPassword: Auth state change ->', { event, hasSession: !!session });
       
       if (!mounted) return;
 
-      if (event === 'PASSWORD_RECOVERY' && session) {
-        // Valid recovery link - show password reset form
-        console.log('ResetPassword: Valid recovery detected via event');
-        clearTimeout(validationTimeout);
-        setIsValidRecovery(true);
-        setCheckingRecovery(false);
-        setShowResendForm(false);
-      } else if (event === 'SIGNED_IN' && session && hasRecoveryToken) {
-        // Sometimes SIGNED_IN fires instead of PASSWORD_RECOVERY
-        console.log('ResetPassword: Valid recovery detected via SIGNED_IN');
-        clearTimeout(validationTimeout);
-        setIsValidRecovery(true);
-        setCheckingRecovery(false);
-        setShowResendForm(false);
+      // Clear all timeouts when we get a valid auth event
+      if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
+        clearTimeout(sessionCheckTimeout);
+        clearTimeout(finalValidationTimeout);
+        
+        if (session) {
+          console.log('ResetPassword: ✓ Valid recovery session established');
+          setIsValidRecovery(true);
+          setCheckingRecovery(false);
+          setShowResendForm(false);
+        }
       }
     });
 
-    // Check for existing session after a brief delay to let Supabase process the URL
-    const checkSession = async () => {
-      // If there's a recovery token, give Supabase more time to process it
-      const initialDelay = hasRecoveryToken ? 1000 : 500;
-      
-      await new Promise(resolve => setTimeout(resolve, initialDelay));
-      
-      if (!mounted) return;
+    // Give Supabase time to process the URL and establish the session
+    // We'll check multiple times with increasing intervals
+    const performSessionChecks = async () => {
+      const checkAttempts = [
+        { delay: 500, label: 'First check' },
+        { delay: 1500, label: 'Second check' },
+        { delay: 3000, label: 'Third check' },
+        { delay: 5000, label: 'Final check' }
+      ];
 
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      console.log('ResetPassword: Session check after delay:', !!session);
+      for (const attempt of checkAttempts) {
+        await new Promise(resolve => setTimeout(resolve, attempt.delay));
+        
+        if (!mounted) return;
 
-      if (session) {
-        // There's a session - show password reset form
-        console.log('ResetPassword: Valid recovery session found');
-        setIsValidRecovery(true);
-        setCheckingRecovery(false);
-      } else if (hasRecoveryToken) {
-        // Has token but no session yet, wait longer (token is still being processed)
-        console.log('ResetPassword: Token detected, waiting for processing...');
-        validationTimeout = setTimeout(() => {
-          if (mounted) {
-            console.log('ResetPassword: Token processing timeout - showing resend form');
-            setShowResendForm(true);
-            setCheckingRecovery(false);
-          }
-        }, 5000); // Wait 5 seconds for token processing
-      } else {
-        // No token and no session - show resend form quickly
-        console.log('ResetPassword: No token or session - showing resend form');
+        const { data: { session } } = await supabase.auth.getSession();
+        console.log(`ResetPassword: ${attempt.label} (${attempt.delay}ms) - Session:`, !!session);
+
+        if (session) {
+          console.log('ResetPassword: ✓ Session found on', attempt.label);
+          clearTimeout(finalValidationTimeout);
+          setIsValidRecovery(true);
+          setCheckingRecovery(false);
+          setShowResendForm(false);
+          return; // Stop checking
+        }
+      }
+
+      // After all attempts, if still no session, show resend form
+      if (mounted) {
+        console.log('ResetPassword: ✗ No session after all attempts - showing resend form');
         setShowResendForm(true);
         setCheckingRecovery(false);
       }
     };
 
-    checkSession();
+    performSessionChecks();
 
     return () => {
       mounted = false;
-      clearTimeout(validationTimeout);
+      clearTimeout(sessionCheckTimeout);
+      clearTimeout(finalValidationTimeout);
       subscription.unsubscribe();
     };
   }, []);
