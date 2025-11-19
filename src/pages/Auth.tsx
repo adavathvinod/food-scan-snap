@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Utensils, ShieldCheck } from "lucide-react";
+import logoImage from "@/assets/foodyscan-logo.png";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -73,8 +74,12 @@ const Auth = () => {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-4">
           <div className="flex items-center justify-center">
-            <div className="p-3 bg-primary rounded-2xl">
-              <Utensils className="w-8 h-8 text-primary-foreground" />
+            <div className="w-20 h-20 flex items-center justify-center">
+              <img 
+                src={logoImage} 
+                alt="FoodyScan Logo" 
+                className="w-full h-full object-contain"
+              />
             </div>
           </div>
           <div className="space-y-2 text-center">
