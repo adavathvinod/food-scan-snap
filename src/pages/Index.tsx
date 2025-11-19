@@ -7,6 +7,7 @@ import MultiItemNutritionCard from "@/components/MultiItemNutritionCard";
 import FoodRecommendations from "@/components/FoodRecommendations";
 import ShareStoryDialog from "@/components/ShareStoryDialog";
 import Layout from "@/components/Layout";
+import { FoodScanWarning } from "@/components/FoodScanWarning";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -225,6 +226,18 @@ const Index = () => {
           </div>
         ) : (
           <>
+            <FoodScanWarning
+              foodName={nutritionData.foodName}
+              calories={nutritionData.calories}
+              protein={nutritionData.protein}
+              carbs={nutritionData.carbs}
+              fat={nutritionData.fat}
+              onGetAlternative={() => {
+                const message = `I just scanned ${nutritionData.foodName}. Can you suggest a healthier alternative that's safe for my health conditions?`;
+                navigate('/ai-chat', { state: { initialMessage: message } });
+              }}
+            />
+            
             <MultiItemNutritionCard 
               data={nutritionData} 
               onScanAnother={resetScan}

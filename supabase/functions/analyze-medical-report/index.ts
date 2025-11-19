@@ -1,3 +1,5 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.47.10';
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -132,6 +134,104 @@ Format as JSON:
     }
 
     console.log("Medical report analyzed successfully");
+
+    // Extract and store health conditions
+    try {
+      const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+      const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
+      
+      if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+          global: { headers: { Authorization: authHeader } }
+        });
+
+        // Extract conditions from analysis
+        const conditions: string[] = [];
+        
+        // Check extracted values for health indicators
+        const extractedData = analysis.extracted || {};
+        if (extractedData.glucose || extractedData.blood_sugar || extractedData.hba1c) {
+          conditions.push("Diabetes");
+        }
+        if (extractedData.cholesterol || extractedData.ldl || extractedData.hdl || extractedData.triglycerides) {
+          conditions.push("High Cholesterol");
+        }
+        if (extractedData.blood_pressure || extractedData.bp || extractedData.systolic || extractedData.diastolic) {
+          conditions.push("Blood Pressure");
+        }
+        if (extractedData.thyroid || extractedData.tsh || extractedData.t3 || extractedData.t4) {
+          conditions.push("Thyroid Disorder");
+        }
+        if (extractedData.hemoglobin || extractedData.hb) {
+          conditions.push("Anemia");
+        }
+        if (extractedData.uric_acid) {
+          conditions.push("High Uric Acid");
+        }
+        if (extractedData.creatinine || extractedData.kidney) {
+          conditions.push("Kidney Function");
+        }
+        if (extractedData.liver || extractedData.sgot || extractedData.sgpt || extractedData.alt || extractedData.ast) {
+          conditions.push("Liver Function");
+        }
+        
+        // Also check recommendations for condition keywords
+        const recommendations = JSON.stringify(analysis.recommendations || "").toLowerCase();
+        const conditionKeywords = {
+          "diabetes": "Diabetes",
+          "thyroid": "Thyroid Disorder",
+          "cholesterol": "High Cholesterol",
+          "pressure": "Blood Pressure",
+          "anemia": "Anemia",
+          "uric acid": "High Uric Acid",
+          "kidney": "Kidney Function",
+          "liver": "Liver Function",
+          "pcod": "PCOD",
+          "pcos": "PCOS",
+          "vitamin": "Vitamin Deficiency",
+          "obesity": "Obesity",
+          "overweight": "Overweight",
+          "underweight": "Underweight"
+        };
+        
+        for (const [keyword, condition] of Object.entries(conditionKeywords)) {
+          if (recommendations.includes(keyword) && !conditions.includes(condition)) {
+            conditions.push(condition);
+          }
+        }
+
+        // Store detected conditions
+        if (conditions.length > 0) {
+          const userId = (await supabaseClient.auth.getUser()).data.user?.id;
+          
+          if (userId) {
+            // Deactivate old conditions detected from medical reports
+            await supabaseClient
+              .from('user_health_conditions')
+              .update({ is_active: false })
+              .eq('user_id', userId)
+              .eq('detected_from', 'medical_report');
+
+            // Insert new conditions
+            const conditionsToInsert = conditions.map(condition => ({
+              user_id: userId,
+              condition_name: condition,
+              detected_from: 'medical_report',
+              notes: 'Auto-detected from medical report analysis'
+            }));
+
+            await supabaseClient
+              .from('user_health_conditions')
+              .insert(conditionsToInsert);
+            
+            console.log(`Stored ${conditions.length} health conditions`);
+          }
+        }
+      }
+    } catch (conditionError) {
+      console.error("Error storing health conditions:", conditionError);
+      // Don't fail the whole request if condition storage fails
+    }
 
     const result = {
       reportType,

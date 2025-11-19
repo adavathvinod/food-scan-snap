@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Send, Loader2, Camera, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { HealthConditionsBadge } from "@/components/HealthConditionsBadge";
 
 interface Message {
   role: "user" | "assistant";
@@ -20,6 +21,7 @@ const AIChat = () => {
   const [user, setUser] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     const checkUser = async () => {
@@ -33,6 +35,16 @@ const AIChat = () => {
     };
     checkUser();
   }, [navigate]);
+
+  useEffect(() => {
+    // Handle initial message from navigation state
+    const state = location.state as { initialMessage?: string };
+    if (state?.initialMessage && messages.length === 0) {
+      setInput(state.initialMessage);
+      // Clear the state to prevent re-triggering
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

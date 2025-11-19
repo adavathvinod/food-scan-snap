@@ -420,6 +420,45 @@ export type Database = {
           },
         ]
       }
+      user_health_conditions: {
+        Row: {
+          condition_name: string
+          created_at: string
+          detected_at: string
+          detected_from: string | null
+          id: string
+          is_active: boolean
+          notes: string | null
+          severity: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          condition_name: string
+          created_at?: string
+          detected_at?: string
+          detected_from?: string | null
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          severity?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          condition_name?: string
+          created_at?: string
+          detected_at?: string
+          detected_from?: string | null
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          severity?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null

@@ -72,6 +72,14 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+    // Fetch user's health conditions
+    const { data: healthConditions } = await supabase
+      .from('user_health_conditions')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('is_active', true)
+      .order('detected_at', { ascending: false });
+
     // Get user context: recent scans, goals, medical reports
     const [scansResult, goalsResult, reportsResult, chatHistoryResult] = await Promise.all([
       supabase.from('scan_history').select('*').eq('user_id', userId).order('scanned_at', { ascending: false }).limit(10),
@@ -85,31 +93,108 @@ Deno.serve(async (req) => {
     const medicalReports = reportsResult.data || [];
     const chatHistory = (chatHistoryResult.data || []).reverse();
 
-    // Build context
-    let context = "You are a friendly AI health assistant specializing in Indian diet and nutrition. Provide personalized advice based on the user's context.\n\n";
+    // Get user language preference first
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('preferred_language')
+      .eq('id', userId)
+      .maybeSingle();
+    const targetLanguage = profile?.preferred_language || 'en';
+
+    // Build comprehensive health context
+    let context = "User Health Profile:\n";
     
+    // Add health conditions (MOST IMPORTANT)
+    if (healthConditions && healthConditions.length > 0) {
+      context += "\n🏥 Active Health Conditions:\n";
+      healthConditions.forEach((condition: any) => {
+        context += `- ${condition.condition_name}`;
+        if (condition.severity) context += ` (${condition.severity})`;
+        if (condition.notes) context += ` - ${condition.notes}`;
+        context += `\n`;
+      });
+    }
+    
+    // Add recent scans
     if (recentScans.length > 0) {
-      context += `Recent food scans (last 10):\n`;
-      recentScans.forEach(scan => {
-        context += `- ${scan.food_name}: ${scan.calories} cal, ${scan.protein}g protein\n`;
+      context += "\n📊 Recent Food Scans:\n";
+      recentScans.forEach((scan: any) => {
+        context += `- ${scan.food_name}: ${scan.calories} cal, Protein: ${scan.protein}g, Carbs: ${scan.carbs}g, Fat: ${scan.fat}g\n`;
+      });
+    }
+    
+    // Add user goals
+    if (userGoals) {
+      context += "\n🎯 Daily Nutritional Goals:\n";
+      context += `- Calories: ${userGoals.daily_calorie_goal || 2000} cal\n`;
+      context += `- Protein: ${userGoals.daily_protein_goal || 50}g\n`;
+      context += `- Carbs: ${userGoals.daily_carbs_goal || 250}g\n`;
+      context += `- Fat: ${userGoals.daily_fat_goal || 70}g\n`;
+    }
+
+    // Add medical reports
+    if (medicalReports.length > 0) {
+      context += "\n📋 Medical Report Summary:\n";
+      medicalReports.forEach((report: any) => {
+        context += `- ${report.report_type}: ${report.recommendations}\n`;
       });
     }
 
-    if (userGoals) {
-      context += `\nDaily goals: ${userGoals.daily_calorie_goal} cal, ${userGoals.daily_protein_goal}g protein\n`;
-    }
+    const systemPrompt = `You are FoodyScan AI — a personal health companion and intelligent food recognizer.
 
-    if (medicalReports.length > 0) {
-      context += `\nRecent medical reports analyzed: ${medicalReports.length}\n`;
-    }
+${context}
 
-    context += `\nAlways provide Indian diet-specific recommendations (both veg and non-veg options when relevant).
-Include a medical disclaimer when providing health advice: "⚠️ For information only — consult a doctor."
-Be friendly, concise, and encouraging.\n\n`;
+🎯 YOUR CORE MISSION:
+You analyze the user's health ONLY from:
+1. Their stored health data (medical reports, past scans, profile, eating history)
+2. Their active health conditions (auto-detected from medical reports)
+
+🏥 HEALTH CONDITIONS YOU SUPPORT:
+Support ALL human health conditions including: diabetes, BP, thyroid, cholesterol, fatty liver, kidney disorders, heart issues, gastric problems, acidity, piles, constipation, IBS, allergies, PCOD/PCOS, obesity, underweight, ulcers, migraine, vitamin deficiencies, low immunity, stress, skin issues, uric acid, joint pain, and ANY condition the user has.
+
+📋 WHEN USER SHARES MEDICAL REPORTS:
+• Summarize their condition in simple, caring language
+• List foods to AVOID (be specific)
+• List foods to EAT (be specific, Indian meals preferred)
+• Create a detailed 1-month diet plan with weekly breakdown
+• Give lifestyle tips relevant to their condition
+
+🍽️ WHEN ANALYZING FOOD ITEMS:
+Compare the food's properties (sugar, fat, oil, spice, salt, calories, fiber, allergens) with their health conditions and:
+• Say if it's SAFE ✅ or HARMFUL ⚠️
+• Explain exactly HOW it affects their body
+• Offer a HEALTHIER ALTERNATIVE
+• Be like a caring friend who knows them personally
+
+💡 YOUR PERSONALITY:
+• Friendly, natural, supportive, easy to understand
+• Never sound like a medical textbook
+• Remember their patterns and learn from their choices
+• Build trust by being consistent and caring
+
+📊 EVERY RESPONSE MUST INCLUDE:
+1. User condition summary (if applicable)
+2. Why this food/advice matters
+3. Safe/Warning message with emoji indicators
+4. Better alternative suggestion
+5. Weekly/monthly plan when needed
+6. Clear, relatable guidance
+
+🎨 RESPONSE STYLE:
+• Use emojis for visual clarity: ✅ ⚠️ 🥗 🏃 💪 🧘
+• Keep language simple and conversational
+• Show you remember their history
+• Be encouraging and motivating
+
+Important:
+- Respond in ${targetLanguage}
+- Focus on Indian diet when relevant
+- Always recommend consulting healthcare professionals for medical decisions
+- Keep responses warm, personal, and actionable`;
 
     // Build messages array
     const messages: any[] = [
-      { role: "system", content: context }
+      { role: "system", content: systemPrompt }
     ];
 
     // Add chat history
@@ -129,13 +214,6 @@ Be friendly, concise, and encouraging.\n\n`;
       ] : message
     };
     messages.push(currentMessage);
-
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('preferred_language')
-      .eq('id', userId)
-      .maybeSingle();
-    const targetLanguage = profile?.preferred_language || 'en';
 
     console.log("Calling Gemini AI with context and language:", targetLanguage);
 
