@@ -12,16 +12,35 @@ const ResetPassword = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [validSession, setValidSession] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if user has valid recovery session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) {
+    let mounted = true;
+    
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!mounted) return;
+      
+      if (event === 'PASSWORD_RECOVERY') {
+        setValidSession(true);
+      } else if (!session) {
         toast.error("Invalid or expired reset link");
         navigate("/admin/login");
       }
     });
+
+    // Also check current session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (mounted && session) {
+        setValidSession(true);
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, [navigate]);
 
   const handleResetPassword = async (e: React.FormEvent) => {
@@ -54,6 +73,18 @@ const ResetPassword = () => {
       setLoading(false);
     }
   };
+
+  if (!validSession) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-secondary p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6">
+            <p className="text-center text-muted-foreground">Verifying reset link...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-secondary p-4">
