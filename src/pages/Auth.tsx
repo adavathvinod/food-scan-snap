@@ -78,7 +78,7 @@ const Auth = () => {
             </div>
           </div>
           <div className="space-y-2 text-center">
-            <CardTitle className="text-3xl">Food Scan Snap</CardTitle>
+            <CardTitle className="text-3xl">FoodyScan</CardTitle>
             <CardDescription>
               {isForgotPassword 
                 ? "Enter your email to reset your password." 
