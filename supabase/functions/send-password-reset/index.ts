@@ -186,7 +186,24 @@ const handler = async (req: Request): Promise<Response> => {
       `,
     });
 
-    console.log("send-password-reset: Email sent successfully:", emailResponse);
+    console.log("send-password-reset: Email response:", emailResponse);
+
+    // Check if email send failed
+    if (emailResponse.error) {
+      console.error("send-password-reset: Email send failed:", emailResponse.error);
+      return new Response(
+        JSON.stringify({ 
+          error: "Failed to send reset email. Please contact support or try again later.",
+          details: emailResponse.error.message
+        }),
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
+    }
+
+    console.log("send-password-reset: Email sent successfully");
 
     return new Response(
       JSON.stringify({ 
