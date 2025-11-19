@@ -19,36 +19,38 @@ const ResetPassword = () => {
   useEffect(() => {
     let mounted = true;
 
-    console.log('ResetPassword: Component mounted, waiting for PASSWORD_RECOVERY event');
-
-    // Listen for the PASSWORD_RECOVERY auth state change event
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const checkRecoverySession = async () => {
+      console.log('ResetPassword: Checking for recovery session');
+      
+      // Check if there's an active session (recovery token was already processed)
+      const { data: { session } } = await supabase.auth.getSession();
+      
       if (!mounted) return;
       
-      console.log('ResetPassword: Auth event received:', event, 'Has session:', !!session);
+      console.log('ResetPassword: Session check result:', { hasSession: !!session });
 
-      if (event === 'PASSWORD_RECOVERY') {
-        console.log('ResetPassword: Valid PASSWORD_RECOVERY event - showing form');
+      if (session) {
+        console.log('ResetPassword: Valid recovery session found - showing form');
         setIsValidRecovery(true);
         setCheckingRecovery(false);
+      } else {
+        // No session found, give it a moment for the recovery token to be processed
+        setTimeout(() => {
+          if (mounted) {
+            console.log('ResetPassword: No session after delay - invalid link');
+            toast.error("Invalid or expired reset link. Please request a new one.");
+            navigate("/admin/login");
+          }
+        }, 2000);
       }
-    });
+    };
 
-    // Set a timeout - if PASSWORD_RECOVERY event doesn't fire within 5 seconds, it's invalid
-    const timeoutId = setTimeout(() => {
-      if (mounted && !isValidRecovery) {
-        console.log('ResetPassword: Timeout - no PASSWORD_RECOVERY event received');
-        toast.error("Invalid or expired reset link. Please request a new one.");
-        navigate("/admin/login");
-      }
-    }, 5000);
+    checkRecoverySession();
 
     return () => {
       mounted = false;
-      clearTimeout(timeoutId);
-      subscription.unsubscribe();
     };
-  }, [navigate, isValidRecovery]);
+  }, [navigate]);
 
   if (checkingRecovery) {
     return (
