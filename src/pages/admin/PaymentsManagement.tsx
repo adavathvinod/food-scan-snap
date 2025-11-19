@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -11,8 +12,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Search, Loader2 } from "lucide-react";
+import { Search, Loader2, Download, X } from "lucide-react";
 import { format } from "date-fns";
 
 interface Payment {
@@ -32,6 +40,10 @@ const PaymentsManagement = () => {
   const [filteredPayments, setFilteredPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [planFilter, setPlanFilter] = useState<string>("all");
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
 
   useEffect(() => {
     fetchPayments();
@@ -39,7 +51,7 @@ const PaymentsManagement = () => {
 
   useEffect(() => {
     filterPayments();
-  }, [searchTerm, payments]);
+  }, [searchTerm, payments, statusFilter, planFilter, startDate, endDate]);
 
   const fetchPayments = async () => {
     const { data: subsData } = await supabase
@@ -80,18 +92,77 @@ const PaymentsManagement = () => {
   };
 
   const filterPayments = () => {
-    if (!searchTerm) {
-      setFilteredPayments(payments);
-      return;
+    let filtered = [...payments];
+
+    // Search filter
+    if (searchTerm) {
+      filtered = filtered.filter(
+        (payment) =>
+          payment.user_email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          payment.user_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          payment.razorpay_payment_id.toLowerCase().includes(searchTerm.toLowerCase())
+      );
     }
 
-    const filtered = payments.filter(
-      (payment) =>
-        payment.user_email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        payment.user_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        payment.razorpay_payment_id.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    // Status filter
+    if (statusFilter !== "all") {
+      filtered = filtered.filter((payment) => payment.status === statusFilter);
+    }
+
+    // Plan filter
+    if (planFilter !== "all") {
+      filtered = filtered.filter((payment) => payment.plan_type === planFilter);
+    }
+
+    // Date range filter
+    if (startDate) {
+      filtered = filtered.filter(
+        (payment) => new Date(payment.created_at) >= new Date(startDate)
+      );
+    }
+    if (endDate) {
+      filtered = filtered.filter(
+        (payment) => new Date(payment.created_at) <= new Date(endDate + "T23:59:59")
+      );
+    }
+
     setFilteredPayments(filtered);
+  };
+
+  const clearFilters = () => {
+    setSearchTerm("");
+    setStatusFilter("all");
+    setPlanFilter("all");
+    setStartDate("");
+    setEndDate("");
+  };
+
+  const exportToCSV = () => {
+    const headers = ["Payment ID", "User Name", "Email", "Plan", "Amount", "Status", "Date"];
+    const csvData = filteredPayments.map((payment) => [
+      payment.razorpay_payment_id,
+      payment.user_name,
+      payment.user_email,
+      getPlanName(payment.plan_type),
+      payment.amount,
+      payment.status.toUpperCase(),
+      format(new Date(payment.created_at), "MMM dd, yyyy HH:mm"),
+    ]);
+
+    const csvContent = [
+      headers.join(","),
+      ...csvData.map((row) => row.map((cell) => `"${cell}"`).join(",")),
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `payments_${format(new Date(), "yyyy-MM-dd")}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const getPlanColor = (planType: string) => {
@@ -171,14 +242,73 @@ const PaymentsManagement = () => {
 
         <Card>
           <CardHeader>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by user, email, or payment ID..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
+            <div className="space-y-4">
+              <div className="flex flex-col lg:flex-row gap-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by user, email, or payment ID..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <Button onClick={exportToCSV} variant="outline" className="gap-2">
+                  <Download className="w-4 h-4" />
+                  Export CSV
+                </Button>
+              </div>
+
+              <div className="flex flex-col lg:flex-row gap-4">
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-full lg:w-[200px]">
+                    <SelectValue placeholder="Filter by status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="expired">Expired</SelectItem>
+                    <SelectItem value="trial">Trial</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={planFilter} onValueChange={setPlanFilter}>
+                  <SelectTrigger className="w-full lg:w-[200px]">
+                    <SelectValue placeholder="Filter by plan" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Plans</SelectItem>
+                    <SelectItem value="free">Free</SelectItem>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                    <SelectItem value="annual">Annual</SelectItem>
+                    <SelectItem value="enterprise">Enterprise</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  placeholder="Start date"
+                  className="w-full lg:w-[180px]"
+                />
+
+                <Input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  placeholder="End date"
+                  className="w-full lg:w-[180px]"
+                />
+
+                {(searchTerm || statusFilter !== "all" || planFilter !== "all" || startDate || endDate) && (
+                  <Button onClick={clearFilters} variant="ghost" className="gap-2">
+                    <X className="w-4 h-4" />
+                    Clear
+                  </Button>
+                )}
+              </div>
             </div>
           </CardHeader>
           <CardContent>
