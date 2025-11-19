@@ -6,47 +6,44 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Utensils } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 
 const ResetPassword = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [isVerifying, setIsVerifying] = useState(true);
+  const [isReady, setIsReady] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    let mounted = true;
     let timeoutId: NodeJS.Timeout;
-
-    // Set a timeout to show error if recovery doesn't happen
-    timeoutId = setTimeout(() => {
-      if (mounted && isVerifying) {
-        toast.error("Invalid or expired reset link");
-        navigate("/admin/login");
+    
+    // Wait for Supabase to process the recovery token from the URL
+    timeoutId = setTimeout(async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        console.log('Session check after recovery:', { 
+          hasSession: !!session, 
+          error: error?.message 
+        });
+        
+        if (session) {
+          console.log('Valid session found, ready for password reset');
+          setIsReady(true);
+        } else {
+          console.log('No valid session, redirecting to login');
+          toast.error("Invalid or expired reset link. Please request a new one.");
+          setTimeout(() => navigate("/admin/login"), 2000);
+        }
+      } catch (err) {
+        console.error('Error checking session:', err);
+        toast.error("An error occurred. Please try again.");
+        setTimeout(() => navigate("/admin/login"), 2000);
       }
-    }, 5000); // Wait 5 seconds for recovery to process
+    }, 1500); // Wait 1.5 seconds for URL hash processing
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!mounted) return;
-
-      console.log('Auth event:', event, 'Session:', !!session);
-
-      if (event === 'PASSWORD_RECOVERY') {
-        clearTimeout(timeoutId);
-        setIsVerifying(false);
-        toast.success("You can now set your new password");
-      } else if (event === 'SIGNED_IN' && session) {
-        clearTimeout(timeoutId);
-        setIsVerifying(false);
-      }
-    });
-
-    return () => {
-      mounted = false;
-      clearTimeout(timeoutId);
-      subscription.unsubscribe();
-    };
+    return () => clearTimeout(timeoutId);
   }, [navigate]);
 
   const handleResetPassword = async (e: React.FormEvent) => {
@@ -71,23 +68,29 @@ const ResetPassword = () => {
 
       if (error) throw error;
 
-      toast.success("Password updated successfully!");
-      navigate("/admin/login");
+      toast.success("Password updated successfully! Redirecting to login...");
+      
+      // Sign out to ensure clean state
+      await supabase.auth.signOut();
+      
+      setTimeout(() => {
+        navigate("/admin/login");
+      }, 1500);
     } catch (error: any) {
+      console.error('Password reset error:', error);
       toast.error(error.message || "Failed to reset password");
-    } finally {
       setLoading(false);
     }
   };
 
-  if (isVerifying) {
+  if (!isReady) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-secondary p-4">
         <Card className="w-full max-w-md">
           <CardContent className="pt-6">
             <div className="flex flex-col items-center gap-4">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-              <p className="text-center text-muted-foreground">Verifying reset link...</p>
+              <p className="text-center text-muted-foreground">Verifying your reset link...</p>
             </div>
           </CardContent>
         </Card>
@@ -98,18 +101,14 @@ const ResetPassword = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-secondary p-4">
       <Card className="w-full max-w-md">
-        <CardHeader className="space-y-4">
-          <div className="flex items-center justify-center">
-            <div className="p-3 bg-primary rounded-2xl">
-              <Utensils className="w-8 h-8 text-primary-foreground" />
-            </div>
+        <CardHeader className="text-center">
+          <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+            <ShieldCheck className="w-8 h-8 text-primary" />
           </div>
-          <div className="space-y-2 text-center">
-            <CardTitle className="text-3xl">Reset Password</CardTitle>
-            <CardDescription>
-              Enter your new password below
-            </CardDescription>
-          </div>
+          <CardTitle className="text-2xl">Reset Admin Password</CardTitle>
+          <CardDescription>
+            Enter your new password below
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleResetPassword} className="space-y-4">
