@@ -12,33 +12,39 @@ const ResetPassword = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [validSession, setValidSession] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
     let mounted = true;
-    
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!mounted) return;
-      
-      if (event === 'PASSWORD_RECOVERY') {
-        setValidSession(true);
-      } else if (!session) {
+    let timeoutId: NodeJS.Timeout;
+
+    // Set a timeout to show error if recovery doesn't happen
+    timeoutId = setTimeout(() => {
+      if (mounted && isVerifying) {
         toast.error("Invalid or expired reset link");
         navigate("/admin/login");
       }
-    });
+    }, 5000); // Wait 5 seconds for recovery to process
 
-    // Also check current session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (mounted && session) {
-        setValidSession(true);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return;
+
+      console.log('Auth event:', event, 'Session:', !!session);
+
+      if (event === 'PASSWORD_RECOVERY') {
+        clearTimeout(timeoutId);
+        setIsVerifying(false);
+        toast.success("You can now set your new password");
+      } else if (event === 'SIGNED_IN' && session) {
+        clearTimeout(timeoutId);
+        setIsVerifying(false);
       }
     });
 
     return () => {
       mounted = false;
+      clearTimeout(timeoutId);
       subscription.unsubscribe();
     };
   }, [navigate]);
@@ -74,12 +80,15 @@ const ResetPassword = () => {
     }
   };
 
-  if (!validSession) {
+  if (isVerifying) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-secondary p-4">
         <Card className="w-full max-w-md">
           <CardContent className="pt-6">
-            <p className="text-center text-muted-foreground">Verifying reset link...</p>
+            <div className="flex flex-col items-center gap-4">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <p className="text-center text-muted-foreground">Verifying reset link...</p>
+            </div>
           </CardContent>
         </Card>
       </div>
