@@ -88,13 +88,13 @@ const AdminLogin = () => {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+      const { data, error } = await supabase.functions.invoke('send-password-reset', {
+        body: { email }
       });
 
       if (error) throw error;
 
-      toast.success("Password reset email sent! Check your inbox.");
+      toast.success(data.message || "Password reset email sent! Check your inbox.");
       setIsForgotPassword(false);
       setEmail("");
     } catch (error: any) {

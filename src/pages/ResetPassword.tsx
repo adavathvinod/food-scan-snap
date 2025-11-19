@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,88 +9,60 @@ import { toast } from "sonner";
 import { ShieldCheck } from "lucide-react";
 
 const ResetPassword = () => {
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get("token");
+  
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [isValidRecovery, setIsValidRecovery] = useState(false);
-  const [checkingRecovery, setCheckingRecovery] = useState(true);
+  const [isValidToken, setIsValidToken] = useState(false);
+  const [checkingToken, setCheckingToken] = useState(true);
   const [showResendForm, setShowResendForm] = useState(false);
   const [resendEmail, setResendEmail] = useState("");
   const [resendLoading, setResendLoading] = useState(false);
+  const [userEmail, setUserEmail] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
-    let mounted = true;
-    let sessionCheckTimeout: NodeJS.Timeout;
-    let finalValidationTimeout: NodeJS.Timeout;
-
-    console.log('ResetPassword: Component mounted, URL:', window.location.href);
-
-    // Set up auth state listener FIRST - this is critical
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('ResetPassword: Auth state change ->', { event, hasSession: !!session });
-      
-      if (!mounted) return;
-
-      // Clear all timeouts when we get a valid auth event
-      if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
-        clearTimeout(sessionCheckTimeout);
-        clearTimeout(finalValidationTimeout);
-        
-        if (session) {
-          console.log('ResetPassword: ✓ Valid recovery session established');
-          setIsValidRecovery(true);
-          setCheckingRecovery(false);
-          setShowResendForm(false);
-        }
-      }
-    });
-
-    // Give Supabase time to process the URL and establish the session
-    // We'll check multiple times with increasing intervals
-    const performSessionChecks = async () => {
-      const checkAttempts = [
-        { delay: 500, label: 'First check' },
-        { delay: 1500, label: 'Second check' },
-        { delay: 3000, label: 'Third check' },
-        { delay: 5000, label: 'Final check' }
-      ];
-
-      for (const attempt of checkAttempts) {
-        await new Promise(resolve => setTimeout(resolve, attempt.delay));
-        
-        if (!mounted) return;
-
-        const { data: { session } } = await supabase.auth.getSession();
-        console.log(`ResetPassword: ${attempt.label} (${attempt.delay}ms) - Session:`, !!session);
-
-        if (session) {
-          console.log('ResetPassword: ✓ Session found on', attempt.label);
-          clearTimeout(finalValidationTimeout);
-          setIsValidRecovery(true);
-          setCheckingRecovery(false);
-          setShowResendForm(false);
-          return; // Stop checking
-        }
-      }
-
-      // After all attempts, if still no session, show resend form
-      if (mounted) {
-        console.log('ResetPassword: ✗ No session after all attempts - showing resend form');
+    const verifyToken = async () => {
+      if (!token) {
+        console.log('ResetPassword: No token in URL, showing resend form');
         setShowResendForm(true);
-        setCheckingRecovery(false);
+        setCheckingToken(false);
+        return;
+      }
+
+      console.log('ResetPassword: Verifying token...');
+      
+      try {
+        const { data, error } = await supabase.functions.invoke('verify-reset-token', {
+          body: { token }
+        });
+
+        console.log('ResetPassword: Verification result:', data, error);
+
+        if (error) throw error;
+
+        if (data.valid) {
+          console.log('ResetPassword: Token is valid');
+          setIsValidToken(true);
+          setUserEmail(data.email);
+        } else {
+          console.log('ResetPassword: Token is invalid:', data.error);
+          toast.error(data.error || "Invalid or expired reset link");
+          setShowResendForm(true);
+        }
+      } catch (error: any) {
+        console.error('ResetPassword: Error verifying token:', error);
+        toast.error("Invalid or expired reset link. Please request a new one.");
+        setShowResendForm(true);
+      } finally {
+        setCheckingToken(false);
       }
     };
 
-    performSessionChecks();
-
-    return () => {
-      mounted = false;
-      clearTimeout(sessionCheckTimeout);
-      clearTimeout(finalValidationTimeout);
-      subscription.unsubscribe();
-    };
-  }, []);
+    verifyToken();
+  }, [token]);
 
   const handleResendLink = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -103,24 +75,25 @@ const ResetPassword = () => {
     setResendLoading(true);
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(resendEmail, {
-        redirectTo: `${window.location.origin}/reset-password`,
+      const { data, error } = await supabase.functions.invoke('send-password-reset', {
+        body: { email: resendEmail }
       });
 
       if (error) throw error;
 
-      toast.success("Password reset link sent! Check your email.");
+      toast.success(data.message || "Password reset link sent! Check your email.");
       setTimeout(() => {
         navigate("/admin/login");
       }, 2000);
     } catch (error: any) {
       console.error('Resend reset link error:', error);
       toast.error(error.message || "Failed to send reset link");
+    } finally {
       setResendLoading(false);
     }
   };
 
-  if (checkingRecovery) {
+  if (checkingToken) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
         <Card className="w-full max-w-md">
@@ -195,21 +168,22 @@ const ResetPassword = () => {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.updateUser({
-        password: password,
+      const { data, error } = await supabase.functions.invoke('reset-password-with-token', {
+        body: { token, password }
       });
 
       if (error) throw error;
 
+      if (!data.success) {
+        throw new Error(data.error || "Failed to reset password");
+      }
+
       toast.success("Password updated successfully! You can now log in.");
       
-      // Sign out to ensure clean state
-      await supabase.auth.signOut();
-      
-      // Redirect to login - check if it was an admin based on referrer or default to user login
       setTimeout(() => {
-        const wasAdmin = document.referrer.includes('/admin');
-        navigate(wasAdmin ? "/admin/login" : "/auth");
+        // Redirect based on user type (check if email contains admin patterns)
+        const isAdmin = userEmail.includes('admin') || userEmail.includes('foodyscan');
+        navigate(isAdmin ? "/admin/login" : "/auth");
       }, 1500);
     } catch (error: any) {
       console.error('Password reset error:', error);
